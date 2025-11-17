@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Patroli PRO - Multi Gallery & PDF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{ --primary:#0b3d91; --muted:#6b7280; --card:#ffffff; --accent:#4f46e5; }
+body{font-family:Inter, system-ui, Arial, sans-serif; margin:0; background:#f3f4f6; color:#0f1724;}
+.container{max-width:980px;margin:18px auto;padding:16px;}
+header{display:flex;align-items:center;gap:12px}
+.logo{width:72px;height:72px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid #e6eef9}
+.card{background:var(--card);border-radius:12px;padding:14px;margin-top:12px;box-shadow:0 6px 18px rgba(15,23,36,0.04)}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.col{flex:1;min-width:220px}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+input[type="text"], input[type="date"], input[type="time"], select, textarea{width:100%;padding:10px;border:1px solid #e6e9ee;border-radius:8px;font-size:14px}
+textarea{min-height:80px}
+.btn{display:inline-block;padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff}
+.btn-ghost{background:transparent;border:1px solid #e6e9ee;color:#111}
+.areas{margin-top:12px}
+.area{border:1px dashed #e6eef9;padding:10px;border-radius:8px;margin-bottom:10px;background:linear-gradient(180deg,#ffffff,#fbfdff)}
+.area h3{margin:0 0 6px 0;display:flex;align-items:center;gap:8px}
+.photo-grid{display:flex;gap:8px;flex-wrap:wrap;max-height:420px;overflow:auto;padding:6px}
+.photo-thumb{flex:0 0 auto;width:96px;height:96px;border-radius:8px;overflow:hidden;background:#eef2ff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(2,6,23,0.06)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.small{font-size:12px;color:var(--muted)}
+.fixed-bottom{position:fixed;right:12px;bottom:12px;z-index:200000}
+#overlay{position:fixed;left:0;right:0;top:0;bottom:0;display:none;align-items:center;justify-content:center;background:rgba(6,8,15,0.6);z-index:999999}
+#overlay .card{background:#0b1220;color:#fff;padding:18px;border-radius:12px;max-width:420px;text-align:center}
+#overlay .bar{height:10px;background:#1f2937;border-radius:6px;overflow:hidden;margin-top:8px}
+#overlay .bar-inner{height:10px;width:0%;background:linear-gradient(90deg,#06b6d4,#4f46e5)}
+.modal{position:fixed;left:0;top:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:999999}
+.modal .modal-card{background:#fff;padding:12px;border-radius:10px;max-width:880px;width:96%;max-height:90%;overflow:auto}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo" id="logoPreview"><img id="logoImg" src="" style="max-width:100%;display:none"></div>
+    <div>
+      <h1>Patroli PRO — Multi Gallery</h1>
+      <div class="small">Pilih banyak foto per area, simpan ke storage, eksport PDF profesional.</div>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <div class="col">
+        <label>Nama Petugas</label>
+        <input id="petugasName" type="text" placeholder="Nama petugas..." />
+      </div>
+      <div class="col">
+        <label>Shift</label>
+        <input id="shift" type="text" placeholder="Shift..." />
+      </div>
+      <div class="col">
+        <label>Tanggal</label>
+        <input id="tanggal" type="date" />
+      </div>
+      <div class="col">
+        <label>Jam</label>
+        <input id="jam" type="time" />
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="row">
+      <div>
+        <label>Upload Logo</label>
+        <input id="uploadLogo" type="file" accept="image/*" />
+      </div>
+      <div style="align-self:end">
+        <button id="saveLogoBtn" class="btn btn-ghost">Simpan Logo</button>
+      </div>
+      <div style="align-self:end">
+        <button id="clearBtn" class="btn btn-ghost">Reset Data</button>
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="row">
+      <div class="download-options">
+        <button id="addAreaBtn" class="btn btn-ghost">+ Tambah Area</button>
+        <button id="compressBtn" class="btn btn-ghost">📦 Kompres Semua</button>
+        <button id="backupBtn" class="btn btn-ghost">💾 Backup</button>
+        <button id="genPdfBtn" class="btn btn-primary">📄 Generate PRO PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="areas" class="areas"></div>
+
+  <div class="card">
+    <div class="small">Preview: klik thumbnail untuk deskripsi panjang atau tekan-hold untuk hapus.</div>
+  </div>
+
+  <footer style="margin-top:16px;text-align:center;color:var(--muted)">© Patroli PRO</footer>
+</div>
+
+<!-- overlay and modal -->
+<div id="overlay"><div class="card"><div id="overlayText">Memproses...</div><div class="bar"><div class="bar-inner" id="barInner"></div></div><div style="margin-top:8px;font-size:12px;color:#cbd5e1">Jangan tutup halaman.</div></div></div>
+
+<div id="modal" class="modal"><div class="modal-card" id="modalCard"></div></div>
+
+<script>
+// Full robust single-file implementation:
+// - per-area multi-file picker (multiple allowed)
+// - IndexedDB storage for blobs + metadata
+// - unlimited thumbnails (scrollable)
+// - chunked processing and compression via canvas
+// - PDF generation (cover + details)
+
+(async function(){
+  // IndexedDB tiny wrapper
+  const DB_NAME = 'patrol_db_v1';
+  const STORE_BLOBS = 'blobs';
+  const STORE_META = 'meta';
+  let db = null;
+  function openDB(){
+    return new Promise((res) => {
+      if(!('indexedDB' in window)) return res(null);
+      const rq = indexedDB.open(DB_NAME, 1);
+      rq.onupgradeneeded = (e)=>{
+        const d = e.target.result;
+        if(!d.objectStoreNames.contains(STORE_BLOBS)) d.createObjectStore(STORE_BLOBS);
+        if(!d.objectStoreNames.contains(STORE_META)) d.createObjectStore(STORE_META);
+      };
+      rq.onsuccess = ()=> { db = rq.result; res(db); };
+      rq.onerror = ()=> res(null);
+    });
+  }
+  await openDB();
+
+  function idbPut(store, key, value){ return new Promise((res)=>{ if(!db){ res(false); return; } const tx=db.transaction([store],'readwrite'); const os=tx.objectStore(store); const r=os.put(value, key); r.onsuccess=()=>res(true); r.onerror=()=>res(false); }); }
+  function idbGet(store, key){ return new Promise((res)=>{ if(!db){ res(null); return; } const tx=db.transaction([store],'readonly'); const os=tx.objectStore(store); const r=os.get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); }); }
+  function idbDelete(store, key){ return new Promise((res)=>{ if(!db){ res(false); return; } const tx=db.transaction([store],'readwrite'); const os=tx.objectStore(store); const r=os.delete(key); r.onsuccess=()=>res(true); r.onerror=()=>res(false); }); }
+
+  // state: patrolData stores meta references; actual blobs in IDB
+  let patrolData = JSON.parse(localStorage.getItem('patrol_meta_v1')||'{}');
+  let logoData = localStorage.getItem('patrol_logo_v1') || null;
+  if(logoData){ document.getElementById('logoImg').src = logoData; document.getElementById('logoImg').style.display='block'; }
+
+  function persistMeta(){ localStorage.setItem('patrol_meta_v1', JSON.stringify(patrolData)); }
+
+  // helpers UI
+  const overlay = document.getElementById('overlay');
+  function showOverlay(text){ document.getElementById('overlayText').innerText = text || 'Memproses...'; overlay.style.display='flex'; }
+  function hideOverlay(){ overlay.style.display='none'; }
+  function setOverlayProgress(pct){ document.getElementById('barInner').style.width = Math.max(0,Math.min(100,pct)) + '%'; }
+
+  const modal = document.getElementById('modal');
+  const modalCard = document.getElementById('modalCard');
+  function showModal(html){ modalCard.innerHTML = html; modal.style.display='flex'; }
+  function hideModal(){ modal.style.display='none'; modalCard.innerHTML = ''; }
+
+  // image helpers
+  function fileToDataURL(file){ return new Promise((res)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>res(null); fr.readAsDataURL(file); }); }
+  function compressDataUrl(dataUrl, quality=0.8, maxSize=1600){ return new Promise((res)=>{ const img=new Image(); img.onload=function(){ let w=img.width,h=img.height; if(w>h && w>maxSize){ h=Math.round(h*maxSize/w); w=maxSize; } else if(h>=w && h>maxSize){ w=Math.round(w*maxSize/h); h=maxSize; } const c=document.createElement('canvas'); c.width=w; c.height=h; const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h); try{ res(c.toDataURL('image/jpeg', quality)); }catch(e){ res(dataUrl); } }; img.onerror=function(){ res(dataUrl); }; img.src=dataUrl; }); }
+
+  // render areas UI
+  function renderAreas(){
+    const container = document.getElementById('areas'); container.innerHTML='';
+    const keys = Object.keys(patrolData);
+    if(keys.length===0){ container.innerHTML = '<div class="card small">Belum ada area. Klik <strong>+ Tambah Area</strong>.</div>'; return; }
+    keys.forEach(k=>{
+      const a = patrolData[k];
+      const div = document.createElement('div'); div.className='area'; div.dataset.idx = k;
+      div.innerHTML = `
+        <h3>Area ${parseInt(k)+1}: <input data-field="name" value="${a.name||''}" style="border:none;background:transparent;font-weight:700;font-size:14px" /></h3>
+        <div style="margin-bottom:6px"><label class="small">Catatan Area</label><textarea data-field="notes">${a.notes||''}</textarea></div>
+        <div style="margin-bottom:6px"><label class="small">Deskripsi Global</label><textarea data-field="global">${a.globalDescription||''}</textarea></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><button class="btn btn-ghost btn-add" data-idx="${k}">➕ Tambah Foto (Gallery - Multi)</button><input type="file" accept="image/*" multiple style="display:none" class="file-input" data-idx="${k}"/><button class="btn btn-ghost btn-remove" data-idx="${k}">Hapus Area</button></div>
+        <div class="photo-grid" data-photos></div>
+      `;
+      container.appendChild(div);
+
+      // bind fields
+      const nameInput = div.querySelector('[data-field="name"]');
+      nameInput.addEventListener('input', (e)=>{ a.name = e.target.value; persistMeta(); });
+      const notes = div.querySelector('[data-field="notes"]');
+      notes.addEventListener('input', (e)=>{ a.notes = e.target.value; persistMeta(); });
+      const global = div.querySelector('[data-field="global"]');
+      global.addEventListener('input', (e)=>{ a.globalDescription = e.target.value; persistMeta(); });
+
+      // bind add button and file input
+      const fileInput = div.querySelector('.file-input');
+      const addBtn = div.querySelector('.btn-add');
+      addBtn.addEventListener('click', ()=> fileInput.click());
+
+      fileInput.addEventListener('change', async (ev)=>{
+        const files = Array.from(ev.target.files || []);
+        if(!files.length) return;
+        // process files in chunks to avoid freeze
+        showOverlay(`Memproses ${files.length} foto...`); setOverlayProgress(0);
+        const CHUNK = 4;
+        let processed = 0;
+        for(let i=0;i<files.length;i+=CHUNK){
+          const chunk = files.slice(i,i+CHUNK);
+          await Promise.all(chunk.map(async (f)=>{
+            try{
+              const data = await fileToDataURL(f);
+              const comp = await compressDataUrl(data, 0.78, 1400);
+              // store blob in IDB if available
+              let key = null;
+              if(db){
+                try{
+                  const blob = await (await fetch(comp)).blob();
+                  key = 'b_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+                  await idbPut(STORE_BLOBS, key, blob);
+                  await idbPut(STORE_META, key, { name: f.name, ts: new Date().toISOString() });
+                  // push meta ref
+                  patrolData[k].photos.push({ ref:key });
+                }catch(e){
+                  // fallback: store dataURL directly
+                  patrolData[k].photos.push(comp);
+                }
+              } else {
+                patrolData[k].photos.push(comp);
+              }
+              patrolData[k].descriptions.push('');
+              persistMeta();
+            }catch(err){ console.warn('file err', err); }
+          }));
+          processed += chunk.length;
+          setOverlayProgress(Math.round((processed/files.length)*100));
+          await new Promise(r=>setTimeout(r,150));
+        }
+        hideOverlay();
+        fileInput.value = '';
+        renderPhotosForArea(k);
+      });
+
+      // remove area
+      div.querySelector('.btn-remove').addEventListener('click', ()=>{
+        if(!confirm('Hapus area ini?')) return;
+        delete patrolData[k];
+        persistMeta();
+        renderAreas();
+      });
+
+      // initial render photos
+      renderPhotosForArea(k);
+    });
+  }
+
+  async function renderPhotosForArea(k){
+    const area = patrolData[k]; if(!area) return;
+    const container = document.querySelector('.area[data-idx="'+k+'"] .photo-grid');
+    if(!container) return;
+    container.innerHTML = '';
+    for(let i=0;i<(area.photos||[]).length;i++){
+      const p = area.photos[i];
+      const thumb = document.createElement('div'); thumb.className='photo-thumb';
+      const img = document.createElement('img');
+      if(p && typeof p === 'object' && p.ref){
+        const blob = await idbGet(STORE_BLOBS, p.ref);
+        if(blob) img.src = URL.createObjectURL(blob); else img.src = '';
+      } else if(typeof p === 'string') img.src = p;
+      thumb.appendChild(img);
+      // click = open modal long description
+      thumb.addEventListener('click', ()=> openPhotoModal(k, i));
+      // long press (contextmenu) = delete
+      thumb.addEventListener('contextmenu', (ev)=>{ ev.preventDefault(); if(confirm('Hapus foto ini?')){ area.photos.splice(i,1); area.descriptions.splice(i,1); persistMeta(); renderPhotosForArea(k); } });
+      container.appendChild(thumb);
+    }
+  }
+
+  function openPhotoModal(k, idx){
+    const a = patrolData[k];
+    const p = a.photos[idx];
+    let imgSrc = '';
+    const html = `<div style="display:flex;gap:12px;align-items:flex-start"><div style="flex:1;min-width:240px"><img id="modalImg" style="max-width:100%;border-radius:6px" /></div><div style="flex:1"><label>Deskripsi panjang</label><textarea id="modalDesc" style="width:100%;height:260px;border:1px solid #e6e9ee;padding:8px;border-radius:8px">${a.descriptions[idx]||''}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button id="saveDesc" class="btn btn-primary">Simpan</button><button id="delPhoto" class="btn btn-ghost">Hapus</button><button id="closeModal" class="btn btn-ghost">Tutup</button></div></div></div>`;
+    showModal(html);
+    (async ()=>{
+      const modalImg = document.getElementById('modalImg');
+      if(p && typeof p === 'object' && p.ref){ const blob = await idbGet(STORE_BLOBS, p.ref); if(blob) modalImg.src = URL.createObjectURL(blob); else modalImg.src = ''; }
+      else if(typeof p === 'string') modalImg.src = p;
+      document.getElementById('saveDesc').addEventListener('click', ()=>{
+        a.descriptions[idx] = document.getElementById('modalDesc').value || '';
+        persistMeta();
+        hideModal(); renderPhotosForArea(k);
+      });
+      document.getElementById('delPhoto').addEventListener('click', async ()=>{
+        if(!confirm('Hapus foto ini permanen?')) return;
+        const ref = p && p.ref ? p.ref : null;
+        if(ref) await idbDelete(STORE_BLOBS, ref);
+        a.photos.splice(idx,1); a.descriptions.splice(idx,1);
+        persistMeta(); hideModal(); renderPhotosForArea(k);
+      });
+      document.getElementById('closeModal').addEventListener('click', ()=> hideModal());
+    })();
+  }
+
+  // UI actions: add area
+  document.getElementById('addAreaBtn').addEventListener('click', ()=>{
+    const id = Object.keys(patrolData).length;
+    patrolData[id] = { name: 'Area '+(id+1), notes:'', globalDescription:'', photos:[], descriptions:[] };
+    persistMeta();
+    renderAreas();
+  });
+
+  // logo upload
+  document.getElementById('uploadLogo').addEventListener('change', async (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    const d = await fileToDataURL(f); logoData = d; localStorage.setItem('patrol_logo_v1', d); document.getElementById('logoImg').src = d; document.getElementById('logoImg').style.display='block';
+  });
+  document.getElementById('saveLogoBtn').addEventListener('click', ()=>{ if(logoData){ localStorage.setItem('patrol_logo_v1', logoData); alert('Logo disimpan'); } else alert('Upload logo dulu'); });
+
+  // clear/reset
+  document.getElementById('clearBtn').addEventListener('click', async ()=>{
+    if(!confirm('Reset semua data lokal?')) return;
+    // delete IDB blobs metadata
+    if(db){
+      const tx = db.transaction([STORE_BLOBS, STORE_META],'readwrite');
+      tx.objectStore(STORE_BLOBS).clear(); tx.objectStore(STORE_META).clear();
+    }
+    patrolData = {}; logoData = null; localStorage.removeItem('patrol_meta_v1'); localStorage.removeItem('patrol_logo_v1'); renderAreas();
+    alert('Reset selesai');
+  });
+
+  // compress all (re-encode existing dataURLs stored in meta)
+  document.getElementById('compressBtn').addEventListener('click', async ()=>{
+    showOverlay('Mengompres semua foto (ini bisa makan waktu)...'); setOverlayProgress(0);
+    const keys = Object.keys(patrolData); let total=0;
+    keys.forEach(k=> total += (patrolData[k].photos||[]).length);
+    let processed=0;
+    for(const k of keys){
+      for(let i=0;i<(patrolData[k].photos||[]).length;i++){
+        try{
+          const p = patrolData[k].photos[i];
+          if(typeof p === 'string'){ const re = await compressDataUrl(p, 0.78, 1200); patrolData[k].photos[i] = re; }
+          processed++; setOverlayProgress(Math.round((processed/Math.max(1,total))*100));
+        }catch(e){}
+      }
+    }
+    persistMeta(); renderAreas(); hideOverlay(); alert('Kompresi selesai');
+  });
+
+  // backup (copy meta + attempt to export IDB keys)
+  document.getElementById('backupBtn').addEventListener('click', async ()=>{
+    const meta = JSON.stringify({ patrolData, logoData, ts: new Date().toISOString() }, null, 2);
+    try{ await navigator.clipboard.writeText(meta); alert('Backup (meta) disalin ke clipboard. Untuk blobs, gunakan fitur export manual dari browser.'); }catch(e){ prompt('Backup data (copy manual):', meta); }
+  });
+
+  // PDF generator (uses jsPDF, will read blobs from IDB or dataURLs)
+  document.getElementById('genPdfBtn').addEventListener('click', async ()=>{
+    try{
+      const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (window.jsPDF ? window.jsPDF : null);
+      if(!jsPDFCtor){ alert('jsPDF tidak tersedia. Koneksi internet harus aktif.'); return; }
+      showOverlay('Membuat PDF...'); setOverlayProgress(2);
+      const pdf = new jsPDFCtor('p','mm','a4'); const pageW = pdf.internal.pageSize.getWidth(); const pageH = pdf.internal.pageSize.getHeight(); const margin=12;
+      // meta
+      const petugas = document.getElementById('petugasName').value || 'Petugas_Tidak_Terisi';
+      const tanggal = document.getElementById('tanggal').value || new Date().toISOString().split('T')[0];
+      const jam = document.getElementById('jam').value || new Date().toTimeString().slice(0,5);
+      // cover
+      pdf.setFillColor(11,61,145); pdf.rect(0,0,pageW,90,'F'); pdf.setFontSize(20); try{ pdf.setFont('helvetica','bold'); }catch(e){}; pdf.setTextColor(255,255,255); pdf.text(`Petugas: ${petugas}`, pageW/2, 36, {align:'center'}); pdf.setFontSize(16); pdf.text(`Tanggal: ${tanggal}   |   Jam: ${jam}`, pageW/2, 56, {align:'center'});
+      const logoW = pageW * 0.75; const logoH = pageH * 0.45; const logoX = (pageW-logoW)/2; const logoY = 110;
+      let logoToUse = logoData || null;
+      if(!logoToUse){
+        // pick first available image
+        for(const k of Object.keys(patrolData)){ const a=patrolData[k]; if(a && a.photos && a.photos.length){ const p=a.photos[0]; if(typeof p === 'string') { logoToUse = p; break; } else if(p.ref){ const blob = await idbGet(STORE_BLOBS, p.ref); if(blob){ logoToUse = URL.createObjectURL(blob); break; } } } }
+      }
+      if(logoToUse){
+        try{ pdf.addImage(logoToUse, 'JPEG', logoX, logoY, logoW, logoH); }catch(e){ try{ pdf.addImage(logoToUse,'PNG',logoX,logoY,logoW,logoH);}catch(e){ pdf.setDrawColor(200,200,200); pdf.rect(logoX,logoY,logoW,logoH);} }
+      } else { pdf.setDrawColor(200,200,200); pdf.rect(logoX,logoY,logoW,logoH); }
+      pdf.setFontSize(24); pdf.setTextColor(20,30,48); try{ pdf.setFont('helvetica','bold'); }catch(e){}; pdf.text('LAPORAN PATROLI SECURITY', pageW/2, logoY+logoH+30, {align:'center'});
+      pdf.setFontSize(12); pdf.setTextColor(110,110,110); pdf.text(`Generated: ${new Date().toLocaleString('id-ID')}`, pageW/2, logoY+logoH+44, {align:'center'});
+      // details page
+      pdf.addPage(); let y=margin; pdf.setFillColor(44,62,80); pdf.rect(margin,y,pageW-margin*2,12,'F'); pdf.setFontSize(11); pdf.setTextColor(255,255,255); pdf.text('DETAIL PATROLI', margin+4, y+8); y+=18;
+      pdf.setFontSize(10); pdf.setTextColor(60,60,60); pdf.text(`Nama Petugas: ${petugas}`, margin, y); y+=6; pdf.text(`Tanggal: ${tanggal}    Jam: ${jam}`, margin, y); y+=10;
+      const usable = pageW - margin*2; const colGap = 8; const colLeftW = Math.round((usable-colGap)*0.45); const colRightW = usable - colLeftW - colGap;
+      // gather all photos count
+      let totalPhotos = 0; for(const k of Object.keys(patrolData)){ totalPhotos += (patrolData[k].photos||[]).length; }
+      let processed = 0;
+      for(const key of Object.keys(patrolData)){
+        const area = patrolData[key]; if(!area) continue;
+        if(y > pageH - 160){ pdf.addPage(); y=margin; }
+        // header area colored
+        const palette = [[41,128,185],[46,204,113],[142,68,173],[231,76,60],[241,196,15],[52,152,219]]; const bg = palette[parseInt(key)%palette.length];
+        pdf.setFillColor(bg[0],bg[1],bg[2]); const headerH=16; pdf.rect(margin,y,usable,headerH,'F'); pdf.setFontSize(14); pdf.setTextColor(255,255,255); try{ pdf.setFont('helvetica','bold'); }catch(e){}; pdf.text(`${parseInt(key)+1}. ${area.name||'Area'}`, margin+6, y+11); y+=headerH+6;
+        if(area.notes){ const sp = pdf.splitTextToSize('Catatan: '+area.notes, usable-4); pdf.setFontSize(9); pdf.setTextColor(70,70,70); pdf.text(sp, margin+4, y); y += sp.length*4 + 6; }
+        if(area.globalDescription){ const spg = pdf.splitTextToSize(area.globalDescription, usable-4); pdf.setFontSize(9); pdf.setTextColor(80,80,80); pdf.text(spg, margin+4, y); y += spg.length*4 + 6; }
+        for(let i=0;i<(area.photos||[]).length;i++){
+          const p = area.photos[i];
+          if(y + 120 > pageH - 20){ pdf.addPage(); y=margin; }
+          // get image source: idb blob or dataurl
+          let imgSrc = null;
+          if(p && typeof p === 'object' && p.ref){
+            const blob = await idbGet(STORE_BLOBS, p.ref);
+            if(blob) imgSrc = URL.createObjectURL(blob);
+          } else if(typeof p === 'string') imgSrc = p;
+          if(imgSrc){
+            try{ pdf.addImage(imgSrc, 'JPEG', margin, y, colLeftW, 86); }catch(e){ try{ pdf.addImage(imgSrc,'PNG',margin,y,colLeftW,86);}catch(e2){ pdf.setDrawColor(220,220,220); pdf.rect(margin,y,colLeftW,86); } }
+          } else { pdf.setDrawColor(220,220,220); pdf.rect(margin,y,colLeftW,86); }
+          const dx = margin + colLeftW + colGap;
+          pdf.setFillColor(252,252,253); pdf.rect(dx-2, y-2, colRightW+4, 86+4, 'F');
+          pdf.setFontSize(12); pdf.setTextColor(30,30,30); try{ pdf.setFont('helvetica','bold'); }catch(e){}; pdf.text(`Foto ${i+1}`, dx, y+10);
+          pdf.setFontSize(10); pdf.setTextColor(70,70,70); const sdesc = pdf.splitTextToSize(area.descriptions[i]||'(Deskripsi tidak tersedia)', colRightW-6); pdf.text(sdesc, dx, y+18);
+          processed++; setOverlayProgress(Math.round((processed/Math.max(1,totalPhotos))*100)); y += 86 + 10;
+        }
+        pdf.setDrawColor(220,220,220); pdf.setLineWidth(0.25); pdf.line(margin,y,pageW-margin,y); y+=8;
+      }
+      // signature (if any) - not implemented UI but kept for compatibility
+      pdf.setFontSize(8); pdf.setTextColor(120,120,120); pdf.text(`Generated: ${new Date().toLocaleString('id-ID')}`, pageW/2, pageH - 10, {align:'center'});
+      const filename = `Laporan_Patroli_${(petugas||'petugas').replace(/\s/g,'_')}_${tanggal}.pdf`;
+      pdf.save(filename);
+      hideOverlay(); alert('PDF berhasil didownload: ' + filename);
+    }catch(e){ hideOverlay(); console.error(e); alert('Gagal membuat PDF: '+(e.message||e)); }
+  });
+
+  // initial render
+  renderAreas();
+
+})(); // end IIFE
+</script>
+</body>
+</html>
