@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FORM PATROLI  PROFESIONAL SECURITY</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{ --primary:#0b3d91; --muted:#6b7280; --card:#ffffff; --accent:#4f46e5; }
+body{font-family:Inter, system-ui, Arial, sans-serif; margin:0; background:#f3f4f6; color:#0f1724;}
+.container{max-width:980px;margin:18px auto;padding:16px;}
+header{display:flex;align-items:center;gap:12px}
+.logo{width:72px;height:72px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid #e6eef9}
+.card{background:var(--card);border-radius:12px;padding:14px;margin-top:12px;box-shadow:0 6px 18px rgba(15,23,36,0.04)}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.col{flex:1;min-width:220px}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+input[type="text"], input[type="date"], input[type="time"], input[type="password"], select, textarea{width:100%;padding:10px;border:1px solid #e6e9ee;border-radius:8px;font-size:14px}
+textarea{min-height:80px}
+.btn{display:inline-block;padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff}
+.btn-ghost{background:transparent;border:1px solid #e6e9ee;color:#111}
+.areas{margin-top:12px}
+.area{border:1px dashed #e6eef9;padding:10px;border-radius:8px;margin-bottom:10px;background:linear-gradient(180deg,#ffffff,#fbfdff)}
+.area h3{margin:0 0 6px 0;display:flex;align-items:center;gap:8px}
+.photo-grid{display:flex;gap:8px;flex-wrap:wrap;max-height:420px;overflow:auto;padding:6px}
+.photo-thumb{flex:0 0 auto;width:96px;height:96px;border-radius:8px;overflow:hidden;background:#eef2ff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(2,6,23,0.06)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.small{font-size:12px;color:var(--muted)}
+.fixed-bottom{position:fixed;right:12px;bottom:12px;z-index:200000}
+#overlay{position:fixed;left:0;right:0;top:0;bottom:0;display:none;align-items:center;justify-content:center;background:rgba(6,8,15,0.6);z-index:999999}
+#overlay .card{background:#0b1220;color:#fff;padding:18px;border-radius:12px;max-width:420px;text-align:center}
+#overlay .bar{height:10px;background:#1f2937;border-radius:6px;overflow:hidden;margin-top:8px}
+#overlay .bar-inner{height:10px;width:0%;background:linear-gradient(90deg,#06b6d4,#4f46e5)}
+.modal{position:fixed;left:0;top:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:999999}
+.modal .modal-card{background:#fff;padding:12px;border-radius:10px;max-width:880px;width:96%;max-height:90%;overflow:auto}
+.signature-pad{width:100%;height:200px;border:1px solid #e6e9ee;border-radius:8px;background:#fff;cursor:crosshair;margin-bottom:10px}
+.signature-controls{display:flex;gap:8px;margin-bottom:10px}
+.tab-container{margin-top:12px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid #e6e9ee}
+.tab{flex:1;text-align:center;padding:10px;cursor:pointer;border-bottom:2px solid transparent}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:700}
+.tab-content{display:none;padding:12px 0}
+.tab-content.active{display:block}
+.camera-preview{width:100%;max-width:400px;border-radius:8px;background:#000;margin-bottom:10px}
+.camera-controls{display:flex;gap:8px;margin-top:10px}
+.camera-native-btn{display:inline-block;padding:12px 16px;background:linear-gradient(135deg,#10b981,#059669);color:white;border-radius:10px;text-align:center;cursor:pointer;font-weight:700;margin-top:8px}
+.area-selector{margin:10px 0;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo" id="logoPreview"><img id="logoImg" src="" style="max-width:100%;display:none"></div>
+    <div>
+      <h1>FORM PATROLI  PROFESIONAL SECURITY</h1>
+      <div class="small">Pilih banyak foto per area, simpan ke storage, eksport PDF profesional.</div>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <div class="col">
+        <label>Nama Petugas</label>
+        <input id="petugasName" type="text" placeholder="Nama petugas..." />
+      </div>
+      <div class="col">
+        <label>Shift</label>
+        <input id="shift" type="text" placeholder="Shift..." />
+      </div>
+      <div class="col">
+        <label>Tanggal</label>
+        <input id="tanggal" type="date" />
+      </div>
+      <div class="col">
+        <label>Jam</label>
+        <input id="jam" type="time" />
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="row">
+      <div>
+        <label>Upload Photo Lo SAPAM</label>
+        <input id="uploadLogo" type="file" accept="image/*" />
+      </div>
+      <div style="align-self:end">
+        <button id="saveLogoBtn" class="btn btn-ghost">Simpan Photo Lo SAPAM</button>
+      </div>
+      <div style="align-self:end">
+        <button id="clearBtn" class="btn btn-ghost">Reset Data</button>
+      </div>
+    </div>
+
+    <!-- Tanda Tangan Section -->
+    <div style="margin-top:12px">
+      <label>Tanda Tangan Digital</label>
+      <div class="signature-controls">
+        <button id="clearSignature" class="btn btn-ghost">Hapus Tanda Tangan</button>
+        <button id="saveSignature" class="btn btn-primary">Simpan Tanda Tangan</button>
+      </div>
+      <canvas id="signaturePad" class="signature-pad"></canvas>
+      <div class="small">Gambar tanda tangan Anda di atas, lalu klik "Simpan Tanda Tangan"</div>
+    </div>
+
+    <!-- Tab Container untuk Upload Foto -->
+    <div class="tab-container">
+      <div class="tabs">
+        <div class="tab active" data-tab="gallery">📁 CUMA BISA DI AKSES OLEH PRIA TAMPAN MBAH PRi</div>
+        <div class="tab" data-tab="camera">📷 Ambil Foto (Kamera)</div>
+      </div>
+      
+      <!-- Galeri Tab (Perlu Password) -->
+      <div class="tab-content active" id="galleryTab">
+        <div class="row">
+          <div class="col">
+            <label>Master Password untuk Akses Monitoring System</label>
+            <input id="galleryPassword" type="password" placeholder="Masukkan master password..." />
+          </div>
+          <div style="align-self:end">
+            <button id="unlockGalleryBtn" class="btn btn-primary">🔓 JANGAN MACEM MACEM KALAU BERANI REKAYASA SIAP TERIMA AKIBATNYA !!!!</button>
+          </div>
+        </div>
+        <div id="galleryAccess" style="display:none; margin-top:12px">
+          <div class="small" style="color:#059669; margin-bottom:8px">✅ Akses galeri berhasil dibuka!</div>
+          <button id="addAreaBtn" class="btn btn-ghost">+ Tambah Area Baru</button>
+          <div class="small" style="margin-top:8px">Sekarang Anda dapat menambahkan area dan mengupload foto dari galeri</div>
+        </div>
+      </div>
+      
+      <!-- Camera Tab (Bebas tanpa password) -->
+      <div class="tab-content" id="cameraTab">
+        <div class="small" style="margin-bottom:8px">Ambil foto langsung menggunakan <strong>kamera asli HP Anda</strong></div>
+        
+        <!-- Area Selector -->
+        <div class="area-selector" id="areaSelector" style="display:none">
+          <label class="small"><strong>Pilih Area untuk Foto:</strong></label>
+          <select id="targetAreaSelect" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e2e8f0;margin-top:4px">
+            <option value="">-- Pilih Area --</option>
+          </select>
+          <div class="small" style="margin-top:4px;color:#64748b">Pilih area mana yang akan menerima foto dari kamera</div>
+        </div>
+
+        <!-- Tombol untuk buka kamera native HP -->
+        <div style="text-align:center; margin:20px 0">
+          <div class="camera-native-btn" id="openNativeCamera">
+            📸 BUKA KAMERA HP
+          </div>
+          <input type="file" id="nativeCameraInput" accept="image/*" capture="camera" style="display:none" />
+          <div class="small" style="margin-top:8px">Klik tombol di atas untuk membuka kamera asli HP Anda</div>
+        </div>
+
+        <div class="small" style="color:#6b7280; margin-top:16px">
+          <strong>Catatan:</strong> Tombol ini akan membuka aplikasi kamera bawaan HP Anda, bukan kamera di browser.
+        </div>
+        
+        <!-- Tombol Tambah Area untuk Camera Tab -->
+        <div style="margin-top:20px">
+          <button id="addAreaCameraBtn" class="btn btn-ghost">+ Tambah Area Baru (Kamera)</button>
+          <div class="small" style="margin-top:8px">Buat area baru untuk menampung foto dari kamera</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="row">
+      <div class="download-options">
+        <button id="compressBtn" class="btn btn-ghost">📦 Kompres Semua</button>
+        <button id="backupBtn" class="btn btn-ghost">💾 Backup</button>
+        <button id="genPdfBtn" class="btn btn-primary">📄 Generate PRO PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="areas" class="areas"></div>
+
+  <div class="card">
+    <div class="small">Preview: klik thumbnail untuk deskripsi panjang atau tekan-hold untuk hapus.</div>
+  </div>
+
+  <footer style="margin-top:16px;text-align:center;color:var(--muted)">© Patroli PRO</footer>
+</div>
+
+<!-- overlay and modal -->
+<div id="overlay"><div class="card"><div id="overlayText">Memproses...</div><div class="bar"><div class="bar-inner" id="barInner"></div></div><div style="margin-top:8px;font-size:12px;color:#cbd5e1">Jangan tutup halaman.</div></div></div>
+
+<div id="modal" class="modal"><div class="modal-card" id="modalCard"></div></div>
+
+<script>
+// Full robust single-file implementation:
+// - per-area multi-file picker (multiple allowed)
+// - IndexedDB storage for blobs + metadata
+// - unlimited thumbnails (scrollable)
+// - chunked processing and compression via canvas
+// - PDF generation (cover + details)
+
+(async function(){
+  // MASTER PASSWORD - bisa diubah sesuai kebutuhan
+  const MASTER_PASSWORD = "supangat505"; // Password default
+  
+  // IndexedDB tiny wrapper
+  const DB_NAME = 'patrol_db_v1';
+  const STORE_BLOBS = 'blobs';
+  const STORE_META = 'meta';
+  let db = null;
+  function openDB(){
+    return new Promise((res) => {
+      if(!('indexedDB' in window)) return res(null);
+      const rq = indexedDB.open(DB_NAME, 1);
+      rq.onupgradeneeded = (e)=>{
+        const d = e.target.result;
+        if(!d.objectStoreNames.contains(STORE_BLOBS)) d.createObjectStore(STORE_BLOBS);
+        if(!d.objectStoreNames.contains(STORE_META)) d.createObjectStore(STORE_META);
+      };
+      rq.onsuccess = ()=> { db = rq.result; res(db); };
+      rq.onerror = ()=> res(null);
+    });
+  }
+  await openDB();
+
+  function idbPut(store, key, value){ return new Promise((res)=>{ if(!db){ res(false); return; } const tx=db.transaction([store],'readwrite'); const os=tx.objectStore(store); const r=os.put(value, key); r.onsuccess=()=>res(true); r.onerror=()=>res(false); }); }
+  function idbGet(store, key){ return new Promise((res)=>{ if(!db){ res(null); return; } const tx=db.transaction([store],'readonly'); const os=tx.objectStore(store); const r=os.get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); }); }
+  function idbDelete(store, key){ return new Promise((res)=>{ if(!db){ res(false); return; } const tx=db.transaction([store],'readwrite'); const os=tx.objectStore(store); const r=os.delete(key); r.onsuccess=()=>res(true); r.onerror=()=>res(false); }); }
+
+  // state: patrolData stores meta references; actual blobs in IDB
+  let patrolData = JSON.parse(localStorage.getItem('patrol_meta_v1')||'{}');
+  let logoData = localStorage.getItem('patrol_logo_v1') || null;
+  let signatureData = localStorage.getItem('patrol_signature_v1') || null;
+  let galleryAccessGranted = localStorage.getItem('patrol_gallery_access') === 'true' || false;
+  
+  // Variabel untuk menyimpan area target saat ini
+  let currentTargetArea = null;
+  
+  if(logoData){ document.getElementById('logoImg').src = logoData; document.getElementById('logoImg').style.display='block'; }
+
+  function persistMeta(){ localStorage.setItem('patrol_meta_v1', JSON.stringify(patrolData)); }
+
+  // helpers UI
+  const overlay = document.getElementById('overlay');
+  function showOverlay(text){ document.getElementById('overlayText').innerText = text || 'Memproses...'; overlay.style.display='flex'; }
+  function hideOverlay(){ overlay.style.display='none'; }
+  function setOverlayProgress(pct){ document.getElementById('barInner').style.width = Math.max(0,Math.min(100,pct)) + '%'; }
+
+  const modal = document.getElementById('modal');
+  const modalCard = document.getElementById('modalCard');
+  function showModal(html){ modalCard.innerHTML = html; modal.style.display='flex'; }
+  function hideModal(){ modal.style.display='none'; modalCard.innerHTML = ''; }
+
+  // image helpers
+  function fileToDataURL(file){ return new Promise((res)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>res(null); fr.readAsDataURL(file); }); }
+  function compressDataUrl(dataUrl, quality=0.8, maxSize=1600){ return new Promise((res)=>{ const img=new Image(); img.onload=function(){ let w=img.width,h=img.height; if(w>h && w>maxSize){ h=Math.round(h*maxSize/w); w=maxSize; } else if(h>=w && h>maxSize){ w=Math.round(w*maxSize/h); h=maxSize; } const c=document.createElement('canvas'); c.width=w; c.height=h; const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h); try{ res(c.toDataURL('image/jpeg', quality)); }catch(e){ res(dataUrl); } }; img.onerror=function(){ res(dataUrl); }; img.src=dataUrl; }); }
+
+  // Tab System
+  function setupTabs() {
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Remove active class from all tabs and contents
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        // Add active class to clicked tab and corresponding content
+        tab.classList.add('active');
+        const tabId = tab.getAttribute('data-tab');
+        document.getElementById(tabId + 'Tab').classList.add('active');
+        
+        // Update area selector ketika ganti tab
+        updateAreaSelector();
+      });
+    });
+  }
+
+  // Update Area Selector
+  function updateAreaSelector() {
+    const areaSelector = document.getElementById('areaSelector');
+    const targetAreaSelect = document.getElementById('targetAreaSelect');
+    const areaKeys = Object.keys(patrolData);
+    
+    if (areaKeys.length > 0) {
+      areaSelector.style.display = 'block';
+      targetAreaSelect.innerHTML = '<option value="">-- Pilih Area --</option>';
+      
+      areaKeys.forEach(key => {
+        const area = patrolData[key];
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = `Area ${parseInt(key)+1}: ${area.name || 'Area'}`;
+        targetAreaSelect.appendChild(option);
+      });
+      
+      // Set current target area ke area terakhir jika belum ada yang dipilih
+      if (!currentTargetArea && areaKeys.length > 0) {
+        currentTargetArea = areaKeys[areaKeys.length - 1]; // Area terbaru
+        targetAreaSelect.value = currentTargetArea;
+      } else if (currentTargetArea) {
+        targetAreaSelect.value = currentTargetArea;
+      }
+    } else {
+      areaSelector.style.display = 'none';
+      currentTargetArea = null;
+    }
+  }
+
+  // Native Camera System - BUKA KAMERA ASLI HP
+  function setupNativeCamera() {
+    const openCameraBtn = document.getElementById('openNativeCamera');
+    const cameraInput = document.getElementById('nativeCameraInput');
+    const targetAreaSelect = document.getElementById('targetAreaSelect');
+
+    // Event listener untuk select area
+    targetAreaSelect.addEventListener('change', (e) => {
+      currentTargetArea = e.target.value;
+    });
+
+    openCameraBtn.addEventListener('click', () => {
+      // Cek dulu apakah ada area
+      const areaKeys = Object.keys(patrolData);
+      if (areaKeys.length === 0) {
+        alert('⚠️ Buat area dulu dengan klik "Tambah Area Baru (Kamera)" sebelum mengambil foto!');
+        return;
+      }
+      
+      // Cek apakah area sudah dipilih
+      if (!currentTargetArea) {
+        alert('⚠️ Pilih area terlebih dahulu!');
+        return;
+      }
+      
+      // Trigger click pada input file dengan capture="camera"
+      cameraInput.click();
+    });
+
+    cameraInput.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      showOverlay('Memproses foto dari kamera...');
+      
+      try {
+        const dataUrl = await fileToDataURL(file);
+        const compressedDataUrl = await compressDataUrl(dataUrl, 0.8, 1200);
+        
+        // Tambahkan ke area yang dipilih
+        addPhotoToArea(compressedDataUrl, currentTargetArea);
+        
+        hideOverlay();
+      } catch (error) {
+        hideOverlay();
+        alert('❌ Gagal memproses foto: ' + error.message);
+      }
+      
+      // Reset input untuk bisa dipakai lagi
+      cameraInput.value = '';
+    });
+  }
+
+  function addPhotoToArea(dataUrl, targetAreaKey) {
+    if (!patrolData[targetAreaKey]) {
+      alert('❌ Area tidak ditemukan!');
+      return;
+    }
+    
+    patrolData[targetAreaKey].photos.push(dataUrl);
+    patrolData[targetAreaKey].descriptions.push('');
+    persistMeta();
+    renderAreas();
+    
+    alert('✅ Foto berhasil ditambahkan ke ' + patrolData[targetAreaKey].name);
+  }
+
+  // Gallery Access System
+  function setupGalleryAccess() {
+    const unlockBtn = document.getElementById('unlockGalleryBtn');
+    const galleryAccess = document.getElementById('galleryAccess');
+    
+    if (galleryAccessGranted) {
+      galleryAccess.style.display = 'block';
+    }
+    
+    unlockBtn.addEventListener('click', () => {
+      const password = document.getElementById('galleryPassword').value;
+      if (password === MASTER_PASSWORD) {
+        galleryAccessGranted = true;
+        localStorage.setItem('patrol_gallery_access', 'true');
+        galleryAccess.style.display = 'block';
+        alert('✅ Akses galeri berhasil dibuka!');
+      } else {
+        alert('❌ Password salah! Akses galeri ditolak.');
+      }
+    });
+  }
+
+  // Signature Pad Implementation
+  const signatureCanvas = document.getElementById('signaturePad');
+  const signatureCtx = signatureCanvas.getContext('2d');
+  let isDrawing = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  function resizeCanvas() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    signatureCanvas.width = signatureCanvas.offsetWidth * ratio;
+    signatureCanvas.height = signatureCanvas.offsetHeight * ratio;
+    signatureCtx.scale(ratio, ratio);
+    signatureCtx.lineJoin = 'round';
+    signatureCtx.lineCap = 'round';
+    signatureCtx.lineWidth = 2;
+    signatureCtx.strokeStyle = '#000000';
+    
+    signatureCtx.fillStyle = '#ffffff';
+    signatureCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function startDrawing(e) {
+    isDrawing = true;
+    [lastX, lastY] = [e.offsetX, e.offsetY];
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(lastX, lastY);
+    signatureCtx.lineTo(e.offsetX, e.offsetY);
+    signatureCtx.stroke();
+    [lastX, lastY] = [e.offsetX, e.offsetY];
+  }
+
+  function stopDrawing() {
+    isDrawing = false;
+  }
+
+  function getTouchPos(canvas, touchEvent) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: touchEvent.touches[0].clientX - rect.left,
+      y: touchEvent.touches[0].clientY - rect.top
+    };
+  }
+
+  signatureCanvas.addEventListener('mousedown', startDrawing);
+  signatureCanvas.addEventListener('mousemove', draw);
+  signatureCanvas.addEventListener('mouseup', stopDrawing);
+  signatureCanvas.addEventListener('mouseout', stopDrawing);
+
+  signatureCanvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = getTouchPos(signatureCanvas, e);
+    startDrawing({ offsetX: touch.x, offsetY: touch.y });
+  });
+
+  signatureCanvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const touch = getTouchPos(signatureCanvas, e);
+    draw({ offsetX: touch.x, offsetY: touch.y });
+  });
+
+  signatureCanvas.addEventListener('touchend', stopDrawing);
+
+  document.getElementById('clearSignature').addEventListener('click', () => {
+    signatureCtx.fillStyle = '#ffffff';
+    signatureCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+  });
+
+  document.getElementById('saveSignature').addEventListener('click', () => {
+    signatureData = signatureCanvas.toDataURL('image/png');
+    localStorage.setItem('patrol_signature_v1', signatureData);
+    alert('Tanda tangan berhasil disimpan!');
+  });
+
+  if (signatureData) {
+    const img = new Image();
+    img.onload = function() {
+      signatureCtx.drawImage(img, 0, 0);
+    };
+    img.src = signatureData;
+  }
+
+  // render areas UI - UNLIMITED AREAS
+  function renderAreas(){
+    const container = document.getElementById('areas'); container.innerHTML='';
+    const keys = Object.keys(patrolData);
+    if(keys.length===0){ 
+      container.innerHTML = '<div class="card small">Belum ada area. Klik "Tambah Area Baru (Kamera)" untuk membuat area pertama, lalu gunakan kamera HP untuk mengambil foto.</div>'; 
+      return; 
+    }
+    keys.forEach(k=>{
+      const a = patrolData[k];
+      const div = document.createElement('div'); div.className='area'; div.dataset.idx = k;
+      
+      const galleryButton = galleryAccessGranted ? 
+        `<button class="btn btn-ghost btn-add" data-idx="${k}">➕ Tambah Foto (Gallery - Multi)</button><input type="file" accept="image/*" multiple style="display:none" class="file-input" data-idx="${k}"/>` : 
+        `<button class="btn btn-ghost" disabled>🔒 Galeri Terkunci</button>`;
+      
+      div.innerHTML = `
+        <h3>Area ${parseInt(k)+1}: <input data-field="name" value="${a.name||'Area '+(parseInt(k)+1)}" style="border:none;background:transparent;font-weight:700;font-size:14px" /></h3>
+        <div style="margin-bottom:6px"><label class="small">Catatan Area</label><textarea data-field="notes" placeholder="Tambahkan catatan untuk area ini...">${a.notes||''}</textarea></div>
+        <div style="margin-bottom:6px"><label class="small">Deskripsi Global</label><textarea data-field="global" placeholder="Deskripsi umum area patroli...">${a.globalDescription||''}</textarea></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          ${galleryButton}
+          <button class="btn btn-ghost btn-remove" data-idx="${k}">🗑️ Hapus Area</button>
+        </div>
+        <div class="photo-grid" data-photos></div>
+        <div class="small" style="margin-top:8px;color:#6b7280">${(a.photos||[]).length} foto di area ini</div>
+      `;
+      container.appendChild(div);
+
+      const nameInput = div.querySelector('[data-field="name"]');
+      nameInput.addEventListener('input', (e)=>{ a.name = e.target.value; persistMeta(); });
+      const notes = div.querySelector('[data-field="notes"]');
+      notes.addEventListener('input', (e)=>{ a.notes = e.target.value; persistMeta(); });
+      const global = div.querySelector('[data-field="global"]');
+      global.addEventListener('input', (e)=>{ a.globalDescription = e.target.value; persistMeta(); });
+
+      if (galleryAccessGranted) {
+        const fileInput = div.querySelector('.file-input');
+        const addBtn = div.querySelector('.btn-add');
+        addBtn.addEventListener('click', ()=> fileInput.click());
+
+        fileInput.addEventListener('change', async (ev)=>{
+          const files = Array.from(ev.target.files || []);
+          if(!files.length) return;
+          showOverlay(`Memproses ${files.length} foto...`); setOverlayProgress(0);
+          const CHUNK = 4;
+          let processed = 0;
+          for(let i=0;i<files.length;i+=CHUNK){
+            const chunk = files.slice(i,i+CHUNK);
+            await Promise.all(chunk.map(async (f)=>{
+              try{
+                const data = await fileToDataURL(f);
+                const comp = await compressDataUrl(data, 0.78, 1400);
+                let key = null;
+                if(db){
+                  try{
+                    const blob = await (await fetch(comp)).blob();
+                    key = 'b_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+                    await idbPut(STORE_BLOBS, key, blob);
+                    await idbPut(STORE_META, key, { name: f.name, ts: new Date().toISOString() });
+                    patrolData[k].photos.push({ ref:key });
+                  }catch(e){
+                    patrolData[k].photos.push(comp);
+                  }
+                } else {
+                  patrolData[k].photos.push(comp);
+                }
+                patrolData[k].descriptions.push('');
+                persistMeta();
+              }catch(err){ console.warn('file err', err); }
+            }));
+            processed += chunk.length;
+            setOverlayProgress(Math.round((processed/files.length)*100));
+            await new Promise(r=>setTimeout(r,150));
+          }
+          hideOverlay();
+          fileInput.value = '';
+          renderPhotosForArea(k);
+        });
+      }
+
+      div.querySelector('.btn-remove').addEventListener('click', ()=>{
+        if(!confirm(`Hapus Area ${parseInt(k)+1} dan semua fotonya?`)) return;
+        delete patrolData[k];
+        persistMeta();
+        renderAreas();
+        updateAreaSelector();
+      });
+
+      renderPhotosForArea(k);
+    });
+    
+    // Update area selector setelah render
+    updateAreaSelector();
+  }
+
+  async function renderPhotosForArea(k){
+    const area = patrolData[k]; if(!area) return;
+    const container = document.querySelector('.area[data-idx="'+k+'"] .photo-grid');
+    if(!container) return;
+    container.innerHTML = '';
+    for(let i=0;i<(area.photos||[]).length;i++){
+      const p = area.photos[i];
+      const thumb = document.createElement('div'); thumb.className='photo-thumb';
+      const img = document.createElement('img');
+      if(p && typeof p === 'object' && p.ref){
+        const blob = await idbGet(STORE_BLOBS, p.ref);
+        if(blob) img.src = URL.createObjectURL(blob); else img.src = '';
+      } else if(typeof p === 'string') img.src = p;
+      thumb.appendChild(img);
+      thumb.addEventListener('click', ()=> openPhotoModal(k, i));
+      thumb.addEventListener('contextmenu', (ev)=>{ ev.preventDefault(); if(confirm('Hapus foto ini?')){ area.photos.splice(i,1); area.descriptions.splice(i,1); persistMeta(); renderPhotosForArea(k); } });
+      container.appendChild(thumb);
+    }
+  }
+
+  function openPhotoModal(k, idx){
+    const a = patrolData[k];
+    const p = a.photos[idx];
+    let imgSrc = '';
+    const html = `<div style="display:flex;gap:12px;align-items:flex-start"><div style="flex:1;min-width:240px"><img id="modalImg" style="max-width:100%;border-radius:6px" /></div><div style="flex:1"><label>Deskripsi panjang</label><textarea id="modalDesc" style="width:100%;height:260px;border:1px solid #e6e9ee;padding:8px;border-radius:8px">${a.descriptions[idx]||''}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button id="saveDesc" class="btn btn-primary">Simpan</button><button id="delPhoto" class="btn btn-ghost">Hapus</button><button id="closeModal" class="btn btn-ghost">Tutup</button></div></div></div>`;
+    showModal(html);
+    (async ()=>{
+      const modalImg = document.getElementById('modalImg');
+      if(p && typeof p === 'object' && p.ref){ const blob = await idbGet(STORE_BLOBS, p.ref); if(blob) modalImg.src = URL.createObjectURL(blob); else modalImg.src = ''; }
+      else if(typeof p === 'string') modalImg.src = p;
+      document.getElementById('saveDesc').addEventListener('click', ()=>{
+        a.descriptions[idx] = document.getElementById('modalDesc').value || '';
+        persistMeta();
+        hideModal(); renderPhotosForArea(k);
+      });
+      document.getElementById('delPhoto').addEventListener('click', async ()=>{
+        if(!confirm('Hapus foto ini permanen?')) return;
+        const ref = p && p.ref ? p.ref : null;
+        if(ref) await idbDelete(STORE_BLOBS, ref);
+        a.photos.splice(idx,1); a.descriptions.splice(idx,1);
+        persistMeta(); hideModal(); renderPhotosForArea(k);
+      });
+      document.getElementById('closeModal').addEventListener('click', ()=> hideModal());
+    })();
+  }
+
+  // UNLIMITED AREAS - Bisa tambah area sebanyak apapun
+  document.getElementById('addAreaBtn').addEventListener('click', ()=>{
+    if (!galleryAccessGranted) {
+      alert('🔒 Harus buka akses galeri terlebih dahulu!');
+      return;
+    }
+    addNewArea();
+  });
+
+  document.getElementById('addAreaCameraBtn').addEventListener('click', ()=>{
+    addNewArea();
+  });
+
+  function addNewArea() {
+    const id = Object.keys(patrolData).length;
+    patrolData[id] = { 
+      name: `Area ${id+1}`, 
+      notes: '', 
+      globalDescription: '', 
+      photos: [], 
+      descriptions: [] 
+    };
+    persistMeta();
+    renderAreas();
+    
+    // Auto-select area baru
+    currentTargetArea = id.toString();
+    updateAreaSelector();
+    
+    alert(`✅ Area ${id+1} berhasil ditambahkan! Sekarang Anda bisa mengambil foto dengan kamera HP.`);
+  }
+
+  document.getElementById('uploadLogo').addEventListener('change', async (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    const d = await fileToDataURL(f); logoData = d; localStorage.setItem('patrol_logo_v1', d); document.getElementById('logoImg').src = d; document.getElementById('logoImg').style.display='block';
+  });
+  document.getElementById('saveLogoBtn').addEventListener('click', ()=>{ if(logoData){ localStorage.setItem('patrol_logo_v1', logoData); alert('Logo disimpan'); } else alert('Upload logo dulu'); });
+
+  document.getElementById('clearBtn').addEventListener('click', async ()=>{
+    if(!confirm('Reset semua data lokal? Semua area dan foto akan dihapus!')) return;
+    if(db){
+      const tx = db.transaction([STORE_BLOBS, STORE_META],'readwrite');
+      tx.objectStore(STORE_BLOBS).clear(); tx.objectStore(STORE_META).clear();
+    }
+    patrolData = {}; logoData = null; signatureData = null; galleryAccessGranted = false;
+    currentTargetArea = null;
+    localStorage.removeItem('patrol_meta_v1'); 
+    localStorage.removeItem('patrol_logo_v1'); 
+    localStorage.removeItem('patrol_signature_v1');
+    localStorage.removeItem('patrol_gallery_access');
+    renderAreas();
+    signatureCtx.fillStyle = '#ffffff';
+    signatureCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    document.getElementById('galleryAccess').style.display = 'none';
+    document.getElementById('galleryPassword').value = '';
+    alert('Reset selesai');
+  });
+
+  document.getElementById('compressBtn').addEventListener('click', async ()=>{
+    showOverlay('Mengompres semua foto (ini bisa makan waktu)...'); setOverlayProgress(0);
+    const keys = Object.keys(patrolData); let total=0;
+    keys.forEach(k=> total += (patrolData[k].photos||[]).length);
+    let processed=0;
+    for(const k of keys){
+      for(let i=0;i<(patrolData[k].photos||[]).length;i++){
+        try{
+          const p = patrolData[k].photos[i];
+          if(typeof p === 'string'){ const re = await compressDataUrl(p, 0.78, 1200); patrolData[k].photos[i] = re; }
+          processed++; setOverlayProgress(Math.round((processed/Math.max(1,total))*100));
+        }catch(e){}
+      }
+    }
+    persistMeta(); renderAreas(); hideOverlay(); alert('Kompresi selesai');
+  });
+
+  document.getElementById('backupBtn').addEventListener('click', async ()=>{
+    const meta = JSON.stringify({ patrolData, logoData, signatureData, ts: new Date().toISOString() }, null, 2);
+    try{ await navigator.clipboard.writeText(meta); alert('Backup (meta) disalin ke clipboard. Untuk blobs, gunakan fitur export manual dari browser.'); }catch(e){ prompt('Backup data (copy manual):', meta); }
+  });
+
+  document.getElementById('genPdfBtn').addEventListener('click', async ()=>{
+    try{
+      const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (window.jsPDF ? window.jsPDF : null);
+      if(!jsPDFCtor){ alert('jsPDF tidak tersedia. Koneksi internet harus aktif.'); return; }
+      showOverlay('Membuat PDF...'); setOverlayProgress(2);
+      const pdf = new jsPDFCtor('p','mm','a4'); const pageW = pdf.internal.pageSize.getWidth(); const pageH = pdf.internal.pageSize.getHeight(); const margin=12;
+      const petugas = document.getElementById('petugasName').value || 'Petugas_Tidak_Terisi';
+      const tanggal = document.getElementById('tanggal').value || new Date().toISOString().split('T')[0];
+      const jam = document.getElementById('jam').value || new Date().toTimeString().slice(0,5);
+      pdf.setFillColor(11,61,145); pdf.rect(0,0,pageW,90,'F'); pdf.setFontSize(20); try{ pdf.setFont('helvetica','bold'); }catch(e){}; pdf.setTextColor(255,255,255); pdf.text(`Petugas: ${petugas}`, pageW/2, 36, {align:'center'}); pdf.setFontSize(16); pdf.text(`Tanggal: ${tanggal}   |   Jam: ${jam}`, pageW/2, 56, {align:'center'});
+      const logoW = pageW * 0.75; const logoH = pageH * 0.45; const logoX = (pageW-logoW)/2; const logoY = 110;
+      let logoToUse = logoData || null;
+      if(!logoToUse){
+        for(const k of Object.keys(patrolData)){ const a=patrolData[k]; if(a && a.photos && a.photos.length){ const p=a.photos[0]; if(typeof p === 'string') { logoToUse = p; break; } else if(p.ref){ const blob = await idbGet(STORE_BLOBS, p.ref); if(blob){ logoToUse = URL.createObjectURL(blob); break; } } } }
+      }
+      if(logoToUse){
+        try{ pdf.addImage(logoToUse, 'JPEG', logoX, logoY, logoW, logoH); }catch(e){ try{ pdf.addImage(logoToUse,'PNG',logoX,logoY,logoW,logoH);}catch(e){ pdf.setDrawColor(200,200,200); pdf.rect(logoX,logoY,logoW,logoH);} }
+      } else { pdf.setDrawColor(200,200,200); pdf.rect(logoX,logoY,logoW,logoH); }
+      pdf.setFontSize(24); pdf.setTextColor(20,30,48); try{ pdf.setFont('helvetica','bold'); }catch(e){}; pdf.text('LAPORAN PATROLI SECURITY', pageW/2, logoY+logoH+30, {align:'center'});
+      pdf.setFontSize(12); pdf.setTextColor(110,110,110); pdf.text(`Generated: ${new Date().toLocaleString('id-ID')}`, pageW/2, logoY+logoH+44, {align:'center'});
+      pdf.addPage(); let y=margin; pdf.setFillColor(44,62,80); pdf.rect(margin,y,pageW-margin*2,12,'F'); pdf.setFontSize(11); pdf.setTextColor(255,255,255); pdf.text('DETAIL PATROLI', margin+4, y+8); y+=18;
+      pdf.setFontSize(10); pdf.setTextColor(60,60,60); pdf.text(`Nama Petugas: ${petugas}`, margin, y); y+=6; pdf.text(`Tanggal: ${tanggal}    Jam: ${jam}`, margin, y); y+=10;
+      const usable = pageW - margin*2; const colGap = 8; const colLeftW = Math.round((usable-colGap)*0.45); const colRightW = usable - colLeftW - colGap;
+      let totalPhotos = 0; for(const k of Object.keys(patrolData)){ totalPhotos += (patrolData[k].photos||[]).length; }
+      let processed = 0;
+      for(const key of Object.keys(patrolData)){
+        const area = patrolData[key]; if(!area) continue;
+        if(y > pageH - 160){ pdf.addPage(); y=margin; }
+        const palette = [[41,128,185],[46,204,113],[142,68,173],[231,76,60],[241,196,15],[52,152,219]]; const bg = palette[parseInt(key)%palette.length];
+        pdf.setFillColor(bg[0],bg[1],bg[2]); const headerH=16; pdf.rect(margin,y,usable,headerH,'F'); pdf.setFontSize(16);
+        pdf.setTextColor(255,255,255); try{ pdf.setFont('helvetica','bold'); }catch(e){}; 
+        pdf.text(`${parseInt(key)+1}. ${area.name||'Area'}`, margin+6, y+11); y+=headerH+6;
+        if(area.notes){ const sp = pdf.splitTextToSize('Catatan: '+area.notes, usable-4); pdf.setFontSize(9); pdf.setTextColor(70,70,70); pdf.text(sp, margin+4, y); y += sp.length*4 + 6; }
+        if(area.globalDescription){ const spg = pdf.splitTextToSize(area.globalDescription, usable-4); pdf.setFontSize(9); pdf.setTextColor(80,80,80); pdf.text(spg, margin+4, y); y += spg.length*4 + 6; }
+        for(let i=0;i<(area.photos||[]).length;i++){
+          const p = area.photos[i];
+          if(y + 120 > pageH - 20){ pdf.addPage(); y=margin; }
+          let imgSrc = null;
+          if(p && typeof p === 'object' && p.ref){
+            const blob = await idbGet(STORE_BLOBS, p.ref);
+            if(blob) imgSrc = URL.createObjectURL(blob);
+          } else if(typeof p === 'string') imgSrc = p;
+          if(imgSrc){
+            try{ pdf.addImage(imgSrc, 'JPEG', margin, y, colLeftW, 86); }catch(e){ try{ pdf.addImage(imgSrc,'PNG',margin,y,colLeftW,86);}catch(e2){ pdf.setDrawColor(220,220,220); pdf.rect(margin,y,colLeftW,86); } }
+          } else { pdf.setDrawColor(220,220,220); pdf.rect(margin,y,colLeftW,86); }
+          const dx = margin + colLeftW + colGap;
+          pdf.setFillColor(252,252,253); pdf.rect(dx-2, y-2, colRightW+4, 86+4, 'F');
+          pdf.setFontSize(12); pdf.setTextColor(30,30,30); try{ pdf.setFont('helvetica','bold'); }catch(e){}; pdf.text(`Foto ${i+1}`, dx, y+10);
+          pdf.setFontSize(10); pdf.setTextColor(70,70,70); const sdesc = pdf.splitTextToSize(area.descriptions[i]||'(Deskripsi tidak tersedia)', colRightW-6); pdf.text(sdesc, dx, y+18);
+          processed++; setOverlayProgress(Math.round((processed/Math.max(1,totalPhotos))*100)); y += 86 + 10;
+        }
+        pdf.setDrawColor(220,220,220); pdf.setLineWidth(0.25); pdf.line(margin,y,pageW-margin,y); y+=8;
+      }
+
+      if(y > pageH - 60) pdf.addPage();
+      y = Math.max(y, margin + 40);
+      
+      pdf.setDrawColor(200,200,200); pdf.setLineWidth(0.5);
+      pdf.line(margin, y, pageW - margin, y); y += 10;
+      
+      pdf.setFontSize(12); pdf.setTextColor(60,60,60);
+      pdf.text('TANDA TANGAN DAN VERIFIKASI', pageW/2, y, {align: 'center'}); y += 10;
+      
+      if(signatureData) {
+        try {
+          const sigWidth = 60;
+          const sigHeight = 30;
+          const sigX = pageW - margin - sigWidth - 20;
+          pdf.addImage(signatureData, 'PNG', sigX, y, sigWidth, sigHeight);
+          
+          pdf.setDrawColor(0,0,0); pdf.setLineWidth(0.5);
+          pdf.line(sigX, y + sigHeight + 2, sigX + sigWidth, y + sigHeight + 2);
+          
+          pdf.setFontSize(10); pdf.setTextColor(0,0,0);
+          pdf.text(petugas, sigX + sigWidth/2, y + sigHeight + 8, {align: 'center'});
+          
+          pdf.setFontSize(8); pdf.setTextColor(0,100,0);
+          pdf.text('Tanda Tangan Digital Terverifikasi & Tervalidasi by System', 
+                  sigX + sigWidth/2, y + sigHeight + 15, {align: 'center'});
+        } catch(e) {
+          console.warn('Gagal menambahkan tanda tangan:', e);
+        }
+      } else {
+        pdf.setFontSize(10); pdf.setTextColor(150,0,0);
+        pdf.text('*Tanda tangan belum tersedia', pageW/2, y + 15, {align: 'center'});
+      }
+
+      pdf.setFontSize(8); pdf.setTextColor(120,120,120); 
+      pdf.text(`Generated: ${new Date().toLocaleString('id-ID')}`, pageW/2, pageH - 10, {align:'center'});
+      
+      const filename = `Laporan_Patroli_${(petugas||'petugas').replace(/\s/g,'_')}_${tanggal}.pdf`;
+      pdf.save(filename);
+      hideOverlay(); alert('PDF berhasil didownload: ' + filename);
+    }catch(e){ hideOverlay(); console.error(e); alert('Gagal membuat PDF: '+(e.message||e)); }
+  });
+
+  // Initialize systems
+  setupTabs();
+  setupGalleryAccess();
+  setupNativeCamera();
+  
+  // initial render
+  renderAreas();
+
+})(); // end IIFE
+</script>
+</body>
+</html>
