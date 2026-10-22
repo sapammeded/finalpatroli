@@ -1500,7 +1500,7 @@ footer {
   const idbStateAtBoot = await idbGet(STORE_META, '__state__');
   if(idbStateAtBoot && idbStateAtBoot.patrolData &&
      (!patrolData || Object.keys(patrolData).length === 0 ||
-      (localMetaSavedAt > 0 && Number(idbStateAtBoot.ts || 0) > localMetaSavedAt))){
+      localMetaSavedAt === 0 || Number(idbStateAtBoot.ts || 0) > localMetaSavedAt)){
     patrolData = idbStateAtBoot.patrolData;
   }
   let logoData = safeLocalGet('patrol_logo_v1') || null;
