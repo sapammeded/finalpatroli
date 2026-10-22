@@ -2495,15 +2495,20 @@ footer {
         for(let i=0;i<(area.photos||[]).length;i++){
           const p = area.photos[i];
           
-          // Cek jika perlu page baru untuk foto berikutnya
-          if(y + 120 > pageH - 20){ 
+          const description = typeof area.descriptions[i] === 'string' ? area.descriptions[i] : DEFAULT_PHOTO_DESCRIPTION;
+          pdf.setFontSize(10);
+          const sdesc = pdf.splitTextToSize(description, colRightW-6);
+          const rowHeight = Math.max(86, 18 + Math.max(1, sdesc.length) * 4 + 8);
+
+          // Jaga keterangan panjang tetap terlihat; pindahkan baris foto ke halaman baru bila perlu.
+          if(y + rowHeight + 10 > pageH - 20){
             pdf.addPage();
             currentPage++;
             y = margin;
           }
-          
+
           setOverlayProgress(5 + (processedAreas/totalAreas * 90) + (i/area.photos.length * (90/totalAreas)));
-          
+
           let imgSrc = null;
           if(p && typeof p === 'object' && p.ref){
             const blob = await idbGet(STORE_BLOBS, p.ref);
@@ -2538,19 +2543,41 @@ footer {
           
           // Description section
           const dx = margin + colLeftW + colGap;
-          pdf.setFillColor(252,252,253); 
-          pdf.rect(dx-2, y-2, colRightW+4, 86+4, 'F');
+          pdf.setFillColor(252,252,253);
+          pdf.rect(dx-2, y-2, colRightW+4, rowHeight+4, 'F');
           pdf.setFontSize(12); 
           pdf.setTextColor(30,30,30); 
           pdf.text(`Foto ${i+1}`, dx, y+10);
           
-          pdf.setFontSize(10); 
-          pdf.setTextColor(70,70,70); 
-          const description = typeof area.descriptions[i] === 'string' ? area.descriptions[i] : DEFAULT_PHOTO_DESCRIPTION;
-          const sdesc = pdf.splitTextToSize(description, colRightW-6); 
-          pdf.text(sdesc, dx, y+18);
-          
-          y += 86 + 10;
+          pdf.setFontSize(10);
+          pdf.setTextColor(70,70,70);
+          // Tampilkan seluruh teks keterangan tanpa memotongnya karena tinggi kotak tetap.
+          const lineHeight = 4;
+          const maxLinesPerPage = Math.max(1, Math.floor((pageH - margin - 20) / lineHeight));
+          let lineOffset = 0;
+          let firstChunk = true;
+          while(lineOffset < Math.max(1, sdesc.length)){
+            const chunk = sdesc.slice(lineOffset, lineOffset + maxLinesPerPage);
+            if(!firstChunk){
+              pdf.addPage();
+              currentPage++;
+              y = margin;
+              pdf.setFillColor(252,252,253);
+              pdf.rect(dx-2, y-2, colRightW+4, Math.min(pageH-margin-y-8, chunk.length*lineHeight+12), 'F');
+              pdf.setFontSize(10);
+              pdf.setTextColor(70,70,70);
+              pdf.text(chunk, dx, y+8);
+              y += chunk.length*lineHeight + 18;
+            } else {
+              pdf.text(chunk, dx, y+18);
+              lineOffset += chunk.length;
+              firstChunk = false;
+              continue;
+            }
+            lineOffset += chunk.length;
+          }
+
+          y += Math.max(86, 18 + Math.max(1, sdesc.length) * lineHeight + 8) + 10;
         }
         
         processedAreas++;
