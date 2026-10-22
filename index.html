@@ -1212,7 +1212,7 @@ footer {
               <h4>KELOLA FOTO & DESKRIPSI</h4>
               <p>Klik thumbnail foto untuk menambah deskripsi. Tekan lama (long press) untuk hapus foto.</p>
               <div class="guide-tip">
-                <i class="fas fa-lightbulb"></i> <strong>Tip:</strong> Jika deskripsi dikosongkan, otomatis terisi "TERKENDALI AMAN".
+                <i class="fas fa-lightbulb"></i> <strong>Tip:</strong> Setiap foto otomatis mendapat template SITUATION REPORT — PATROL. Keterangan bisa diedit atau dihapus; PDF mengikuti isi terakhir tiap foto.
               </div>
             </div>
           </div>
@@ -1425,7 +1425,7 @@ footer {
       <i class="fas fa-eye"></i> Preview: klik thumbnail untuk deskripsi panjang atau tekan-hold untuk hapus.
     </div>
     <div class="quality-notice" style="margin-top:12px">
-      <i class="fas fa-lightbulb"></i> <strong>Deskripsi otomatis:</strong> Jika dikosongkan akan terisi "TERKENDALI AMAN"
+      <i class="fas fa-lightbulb"></i> <strong>Deskripsi otomatis:</strong> Template SITUATION REPORT — PATROL terisi otomatis per foto dan bisa diedit atau dihapus tanpa diisi ulang otomatis
     </div>
   </div>
 
@@ -1980,7 +1980,7 @@ footer {
     }
     
     patrolData[targetAreaKey].photos.push(dataUrl);
-    patrolData[targetAreaKey].descriptions.push('TERKENDALI AMAN');
+    patrolData[targetAreaKey].descriptions.push(DEFAULT_PHOTO_DESCRIPTION);
     persistMeta();
     renderAreas();
     
@@ -2162,7 +2162,7 @@ footer {
               }
               await idbPut(STORE_META, key, { name: f.name, ts: new Date().toISOString(), size: blob.size });
               patrolData[k].photos.push({ ref:key, size:blob.size, name:f.name || '' });
-              patrolData[k].descriptions.push('TERKENDALI AMAN');
+              patrolData[k].descriptions.push(DEFAULT_PHOTO_DESCRIPTION);
               persistMeta();
               processed++;
             }catch(err){
@@ -2217,17 +2217,17 @@ footer {
     const a = patrolData[k];
     const p = a.photos[idx];
     let imgSrc = '';
-    const currentDesc = a.descriptions[idx] || 'TERKENDALI AMAN';
+    const currentDesc = typeof a.descriptions[idx] === 'string' ? a.descriptions[idx] : DEFAULT_PHOTO_DESCRIPTION;
     const html = `<div style="display:flex;gap:12px;align-items:flex-start">
       <div style="flex:1;min-width:240px">
         <img id="modalImg" style="max-width:100%;border-radius:6px" />
         <div class="small" style="margin-top:8px;color:#6b7280">
-          💡 Kosongkan deskripsi untuk menggunakan "TERKENDALI AMAN"
+          💡 Template otomatis bisa diedit atau dihapus sepenuhnya. PDF mengikuti isi keterangan ini.
         </div>
       </div>
       <div style="flex:1">
         <label>Deskripsi panjang</label>
-        <textarea id="modalDesc" style="width:100%;height:260px;border:1px solid #e6e9ee;padding:8px;border-radius:8px" placeholder="Kosongkan untuk 'TERKENDALI AMAN'">${currentDesc === 'TERKENDALI AMAN' ? '' : currentDesc}</textarea>
+        <textarea id="modalDesc" style="width:100%;height:260px;border:1px solid #e6e9ee;padding:8px;border-radius:8px" placeholder="Tulis keterangan untuk foto ini">${currentDesc}</textarea>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button id="saveDesc" class="btn btn-primary">Simpan</button>
           <button id="delPhoto" class="btn btn-ghost">Hapus</button>
@@ -2246,8 +2246,8 @@ footer {
       else if(typeof p === 'string') modalImg.src = p;
       
       document.getElementById('saveDesc').addEventListener('click', ()=>{
-        const newDesc = document.getElementById('modalDesc').value.trim();
-        a.descriptions[idx] = newDesc === '' ? 'TERKENDALI AMAN' : newDesc;
+        const newDesc = document.getElementById('modalDesc').value;
+        a.descriptions[idx] = newDesc;
         persistMeta();
         hideModal(); 
         renderPhotosForArea(k);
@@ -2546,7 +2546,7 @@ footer {
           
           pdf.setFontSize(10); 
           pdf.setTextColor(70,70,70); 
-          const description = area.descriptions[i] || 'TERKENDALI AMAN';
+          const description = typeof area.descriptions[i] === 'string' ? area.descriptions[i] : DEFAULT_PHOTO_DESCRIPTION;
           const sdesc = pdf.splitTextToSize(description, colRightW-6); 
           pdf.text(sdesc, dx, y+18);
           
@@ -2625,6 +2625,9 @@ footer {
       alert('❌ Gagal membuat PDF: ' + e.message); 
     }
   });
+
+  // Default keterangan awal untuk setiap foto; setelah diedit, teks sepenuhnya milik pengguna.
+  const DEFAULT_PHOTO_DESCRIPTION = "SITUATION REPORT — PATROL\n\nHasil patroli menunjukkan bahwa kondisi seluruh area yang telah diperiksa berada dalam keadaan aman, tertib, dan kondusif. Tidak ditemukan indikasi gangguan keamanan maupun kejadian menonjol selama pelaksanaan patroli.\n\nSecurity Status: SECURE & CONTROLLED\nOutstanding Findings: NIHIL";
 
   // Initialize semua systems
   setupTabs();
