@@ -1,31 +1,26 @@
-# FinalPatroli GPS Usage Monitor (standalone)
+# FinalPatroli GPS Usage Monitor
 
-This is an independent Google Apps Script + Google Sheets monitor for FinalPatroli only. It does not use or connect to any other Supabase project or database.
+This Apps Script is configured to use the exact spreadsheet ID supplied by the owner:
+`1Jcj-52qqQNbU_vLhK9YY8KZWJKBE5H6cLhB6c5nEA48`
 
-## Current state
-- The draft branch adds a visible first-use consent prompt to `index.html`.
-- The live `main` branch is unchanged. The draft is not merged and GPS collection is not live.
-- The app's backend URL is deliberately a placeholder until the dedicated Apps Script web app is deployed.
-- Users who decline are not tracked. Users who consent are asked for browser GPS permission. This is not background tracking.
+It only creates/uses a tab named `GPS_USAGE`; it does not clear or edit other tabs. Make sure you want GPS records stored in this spreadsheet and that its sharing permissions are appropriate.
 
-## Deploy the dedicated backend
-1. Create a new Google Apps Script project for FinalPatroli GPS only.
-2. Create `Code.gs` and paste the contents of this folder's `Code.gs`.
-3. Create an HTML file named exactly `Admin` and paste `Admin.html`.
-4. Open **Project Settings → Script Properties** and add `ADMIN_PASSWORD` with a strong, unique password.
-5. Run `setupMonitor()` once and approve the requested Google permissions. It creates a dedicated spreadsheet named `FinalPatroli GPS Usage` unless you deliberately set `SPREADSHEET_ID` to a new, dedicated spreadsheet. Never point it at another project's data.
-6. Deploy → **New deployment → Web app**. Choose **Execute as: Me**. Configure access so the app can submit visits, consistent with your organization's privacy requirements. Copy the deployment URL ending in `/exec`.
-7. In `index.html` on the draft branch, replace `PASTE_DEPLOYED_WEB_APP_URL_HERE` with that URL. Do not publish the placeholder as a finished deployment.
-8. Test with your own phone first: open the draft, choose **Izinkan lokasi**, allow the browser prompt, then check the `GPS_USAGE` sheet and admin web app. Verify a declined permission sends no record.
+## Setup
+1. Create a Google Apps Script project at https://script.google.com/.
+2. Add `Code.gs` and paste the code in this folder.
+3. Add an HTML file named exactly `Admin` and paste `Admin.html`.
+4. In **Project Settings → Script Properties**, add `ADMIN_PASSWORD` with a strong, unique password.
+5. Run `setupMonitor()` once and authorize access. It creates the `GPS_USAGE` tab if needed.
+6. Deploy → **New deployment → Web app**. Choose **Execute as: Me**. Configure access to allow the app to submit records while protecting the admin view.
+7. Copy the deployment URL ending in `/exec`. Replace `PASTE_DEPLOYED_WEB_APP_URL_HERE` in the draft branch's `index.html` with that URL.
+8. Test on your own phone first. Open FinalPatroli, choose to share location, allow browser GPS, and verify a row appears in `GPS_USAGE`.
 
-## Data fields
-Timestamp, random device ID, latitude, longitude, reported accuracy, page name, and consent status. No name, phone number, or patrol photos are collected by this monitor.
+## Data saved
+Timestamp, random device ID, latitude, longitude, accuracy, page name, consent status. The monitor is not background tracking. The app only requests GPS after the user opts in and grants browser permission.
 
-## Admin dashboard
-Open the deployed Apps Script web app URL, enter the admin password, and use the map/table to inspect the recorded points. The password is checked server-side; login sessions expire after one hour. Do not share the URL/password publicly.
-
-## Limits and privacy
-- GPS accuracy depends on the device, browser, signal, and user permission.
-- One record is attempted when FinalPatroli is opened after consent and location permission is granted; this is not continuous or background tracking.
-- Google quotas and policies may change; free usage is subject to Google limits.
-- Use a separate Apps Script project and spreadsheet exclusively for FinalPatroli.
+## Important
+- The live `main` branch is unchanged; this is still a draft until reviewed and merged.
+- This script uses the supplied spreadsheet ID and does not connect to other projects/databases.
+- The spreadsheet may contain other data in other tabs; the script only accesses the `GPS_USAGE` tab.
+- Use a strong admin password and review spreadsheet sharing settings before collecting real users' location.
+- Free usage is subject to Google's quotas.
