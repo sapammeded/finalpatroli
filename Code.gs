@@ -116,7 +116,7 @@ function ensureHeaders_(sheet) {
 
 function sanitizeDeviceDetails_(details) {
   if (!details || typeof details !== 'object') return {};
-  const allowed = ['platform','brand','model','osVersion','language','languages','timezone','screen','viewport','cores','memoryGB','touchPoints','cookieEnabled','online'];
+  const allowed = ['platform','brand','model','osVersion','formFactor','language','languages','timezone','screen','viewport','cores','memoryGB','touchPoints','cookieEnabled','online'];
   const out = {};
   allowed.forEach(k => {
     if (details[k] !== undefined && details[k] !== null) out[k] = details[k];

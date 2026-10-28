@@ -12,18 +12,67 @@ h1{font-size:22px;margin:0 0 6px}.muted{color:#64748b;font-size:13px}input,butto
 <section class="card"><h1>FinalPatroli — GPS Usage Monitor</h1><div class="muted">Khusus FinalPatroli. Titik hanya direkam setelah pengguna menyetujui permintaan lokasi.</div></section>
 <section id="login" class="card"><h2>Login Admin</h2><input id="password" type="password" autocomplete="current-password" placeholder="Password admin"><button onclick="login()">Masuk</button><div id="loginMsg" class="status"></div></section>
 <section id="dashboard" class="hidden">
-<div class="card"><b id="count">0 titik</b><div class="muted">Menampilkan maksimum 2.000 catatan terbaru. Satu perangkat bisa muncul lebih dari sekali.</div><p><button onclick="loadData()">Muat ulang</button><button class="danger" onclick="clearData()">Hapus seluruh riwayat GPS</button></p><div id="status" class="status"></div></div>
+<div class="card"><b id="count">0 titik</b><div class="muted">Menampilkan maksimum 2.000 catatan terbaru. Satu perangkat bisa muncul lebih dari sekali.</div><p><button onclick="loadData()">Muat ulang</button><button class="danger" onclick="clearData()">Hapus seluruh riwayat GPS</button><button onclick="exportCsv()">Export CSV</button></p><div id="status" class="status"></div></div>
+<div class="card">
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <input id="fDevice" placeholder="Cari Device ID / User Agent / Merek..." style="flex:2;min-width:200px" oninput="applyFilter()">
+    <input id="fFrom" type="date" style="flex:1;min-width:140px" onchange="applyFilter()">
+    <input id="fTo" type="date" style="flex:1;min-width:140px" onchange="applyFilter()">
+    <button onclick="resetFilter()" style="flex:0 0 auto">Reset Filter</button>
+  </div>
+  <div id="filterStatus" class="muted"></div>
+</div>
 <div class="card"><div id="map"></div></div>
 <div class="card tablewrap"><table><thead><tr><th>Waktu</th><th>Perangkat</th><th>Koordinat</th><th>Akurasi</th><th>User Agent</th><th>Detail Perangkat</th><th>Peta</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-let token='', map=null, markers=null;
+let token='', map=null, markers=null, allItems=[], filteredItems=[];
 function login(){document.getElementById('loginMsg').textContent='Memeriksa...';google.script.run.withSuccessHandler(r=>{if(!r||!r.ok){document.getElementById('loginMsg').textContent='Password salah.';return}token=r.token;document.getElementById('login').classList.add('hidden');document.getElementById('dashboard').classList.remove('hidden');initMap();loadData()}).withFailureHandler(e=>document.getElementById('loginMsg').textContent=e.message).adminLogin(document.getElementById('password').value)}
 function initMap(){if(map)return;map=L.map('map').setView([-2.5,118],5);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);markers=L.layerGroup().addTo(map)}
-function loadData(){document.getElementById('status').textContent='Memuat titik GPS...';google.script.run.withSuccessHandler(draw).withFailureHandler(e=>document.getElementById('status').textContent=e.message).getLocations(token)}
-function draw(items){markers.clearLayers();const rows=document.getElementById('rows');rows.innerHTML='';document.getElementById('count').textContent=items.length+' catatan GPS';if(!items.length){document.getElementById('status').textContent='Belum ada titik GPS yang masuk.';return}const bounds=[];items.forEach(x=>{const p=[x.latitude,x.longitude];bounds.push(p);L.marker(p).addTo(markers).bindPopup('<b>'+esc(x.deviceId||'Perangkat')+'</b><br>'+new Date(x.timestamp).toLocaleString('id-ID')+'<br>Akurasi ±'+Math.round(x.accuracy)+' m<br><small>'+esc(x.userAgent||'User Agent tidak tersedia')+'</small>');const tr=document.createElement('tr');const cells=[new Date(x.timestamp).toLocaleString('id-ID'),x.deviceId||'-',x.latitude.toFixed(6)+', '+x.longitude.toFixed(6),Math.round(x.accuracy)+' m',x.userAgent||'-',formatDeviceDetails(x.deviceDetails)];cells.forEach(v=>{const td=document.createElement('td');td.textContent=v;td.style.maxWidth='280px';td.style.whiteSpace='normal';td.style.overflowWrap='anywhere';tr.appendChild(td)});const td=document.createElement('td');const a=document.createElement('a');a.href='https://www.google.com/maps?q='+encodeURIComponent(x.latitude+','+x.longitude);a.target='_blank';a.rel='noopener';a.textContent='Buka peta';td.appendChild(a);tr.appendChild(td);rows.appendChild(tr)});map.fitBounds(bounds,{padding:[25,25],maxZoom:15});document.getElementById('status').textContent='Berhasil memuat titik GPS.'}
-function formatDeviceDetails(raw){try{const d=typeof raw==='string'?JSON.parse(raw):raw;if(!d||typeof d!=='object')return '-';const parts=[];if(d.brand||d.model)parts.push('Merek/Model: '+[d.brand,d.model].filter(Boolean).join(' '));if(d.osVersion)parts.push('Versi OS: '+d.osVersion);if(d.platform)parts.push('Platform: '+d.platform);if(d.language)parts.push('Bahasa: '+d.language);if(d.timezone)parts.push('Zona waktu: '+d.timezone);if(d.screen)parts.push('Layar: '+d.screen.width+'×'+d.screen.height+' @'+(d.screen.pixelRatio||1)+'x');if(d.viewport)parts.push('Viewport: '+d.viewport.width+'×'+d.viewport.height);if(d.cores)parts.push('Logical cores: '+d.cores);if(d.memoryGB)parts.push('RAM perkiraan: '+d.memoryGB+' GB');if(d.touchPoints!==undefined)parts.push('Touch points: '+d.touchPoints);if(d.online!==undefined)parts.push('Online: '+(d.online?'Ya':'Tidak'));return parts.join(' | ')||'-'}catch(e){return '-'}}
+function loadData(){document.getElementById('status').textContent='Memuat titik GPS...';google.script.run.withSuccessHandler(items=>{allItems=items||[];applyFilter()}).withFailureHandler(e=>document.getElementById('status').textContent=e.message).getLocations(token)}
+function deviceLabel(x){try{const d=typeof x.deviceDetails==='string'?JSON.parse(x.deviceDetails):x.deviceDetails;return [d&&d.brand,d&&d.model].filter(Boolean).join(' ')}catch(e){return ''}}
+function applyFilter(){
+  const q=(document.getElementById('fDevice').value||'').trim().toLowerCase();
+  const from=document.getElementById('fFrom').value;
+  const to=document.getElementById('fTo').value;
+  filteredItems=allItems.filter(x=>{
+    if(q){
+      const hay=((x.deviceId||'')+' '+(x.userAgent||'')+' '+deviceLabel(x)).toLowerCase();
+      if(hay.indexOf(q)===-1) return false;
+    }
+    if(from||to){
+      const t=new Date(x.timestamp);
+      if(from && t < new Date(from+'T00:00:00')) return false;
+      if(to && t > new Date(to+'T23:59:59')) return false;
+    }
+    return true;
+  });
+  const fs=document.getElementById('filterStatus');
+  fs.textContent=(q||from||to)?('Filter aktif: '+filteredItems.length+' dari '+allItems.length+' catatan.'):'';
+  draw(filteredItems);
+}
+function resetFilter(){document.getElementById('fDevice').value='';document.getElementById('fFrom').value='';document.getElementById('fTo').value='';applyFilter()}
+function draw(items){markers.clearLayers();const rows=document.getElementById('rows');rows.innerHTML='';document.getElementById('count').textContent=items.length+' catatan GPS';if(!items.length){document.getElementById('status').textContent='Belum ada titik GPS yang masuk / cocok dengan filter.';return}const bounds=[];items.forEach(x=>{const p=[x.latitude,x.longitude];bounds.push(p);L.marker(p).addTo(markers).bindPopup('<b>'+esc(x.deviceId||'Perangkat')+'</b><br>'+new Date(x.timestamp).toLocaleString('id-ID')+'<br>Akurasi ±'+Math.round(x.accuracy)+' m<br><small>'+esc(x.userAgent||'User Agent tidak tersedia')+'</small>');const tr=document.createElement('tr');const cells=[new Date(x.timestamp).toLocaleString('id-ID'),x.deviceId||'-',x.latitude.toFixed(6)+', '+x.longitude.toFixed(6),Math.round(x.accuracy)+' m',x.userAgent||'-',formatDeviceDetails(x.deviceDetails)];cells.forEach(v=>{const td=document.createElement('td');td.textContent=v;td.style.maxWidth='280px';td.style.whiteSpace='normal';td.style.overflowWrap='anywhere';tr.appendChild(td)});const td=document.createElement('td');const a=document.createElement('a');a.href='https://www.google.com/maps?q='+encodeURIComponent(x.latitude+','+x.longitude);a.target='_blank';a.rel='noopener';a.textContent='Buka peta';td.appendChild(a);tr.appendChild(td);rows.appendChild(tr)});map.fitBounds(bounds,{padding:[25,25],maxZoom:15});document.getElementById('status').textContent='Berhasil memuat titik GPS.'}
+function csvEscape(v){const s=String(v===undefined||v===null?'':v);return /[",\n]/.test(s)?('"'+s.replace(/"/g,'""')+'"'):s}
+function exportCsv(){
+  const items=filteredItems.length||document.getElementById('fDevice').value||document.getElementById('fFrom').value||document.getElementById('fTo').value?filteredItems:allItems;
+  if(!items.length){alert('Tidak ada data untuk diexport.');return}
+  const header=['Waktu','Device ID','Latitude','Longitude','Akurasi (m)','Halaman','User Agent','Merek','Model','Versi OS'];
+  const lines=[header.map(csvEscape).join(',')];
+  items.forEach(x=>{
+    let brand='',model='',osVersion='';
+    try{const d=typeof x.deviceDetails==='string'?JSON.parse(x.deviceDetails):x.deviceDetails;if(d){brand=d.brand||'';model=d.model||'';osVersion=d.osVersion||''}}catch(e){}
+    lines.push([new Date(x.timestamp).toISOString(),x.deviceId||'',x.latitude,x.longitude,Math.round(x.accuracy||0),x.page||'',x.userAgent||'',brand,model,osVersion].map(csvEscape).join(','));
+  });
+  const blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='finalpatroli_gps_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function formatDeviceDetails(raw){try{const d=typeof raw==='string'?JSON.parse(raw):raw;if(!d||typeof d!=='object')return '-';const parts=[];if(d.brand||d.model)parts.push('Merek/Model: '+[d.brand,d.model].filter(Boolean).join(' '));if(d.osVersion)parts.push('Versi OS: '+d.osVersion);if(d.formFactor)parts.push('Tipe: '+d.formFactor);if(d.platform)parts.push('Platform: '+d.platform);if(d.language)parts.push('Bahasa: '+d.language);if(d.timezone)parts.push('Zona waktu: '+d.timezone);if(d.screen)parts.push('Layar: '+d.screen.width+'×'+d.screen.height+' @'+(d.screen.pixelRatio||1)+'x');if(d.viewport)parts.push('Viewport: '+d.viewport.width+'×'+d.viewport.height);if(d.cores)parts.push('Logical cores: '+d.cores);if(d.memoryGB)parts.push('RAM perkiraan: '+d.memoryGB+' GB');if(d.touchPoints!==undefined)parts.push('Touch points: '+d.touchPoints);if(d.online!==undefined)parts.push('Online: '+(d.online?'Ya':'Tidak'));return parts.join(' | ')||'-'}catch(e){return '-'}}
 function clearData(){if(!confirm('Hapus seluruh riwayat GPS FinalPatroli? Tindakan ini tidak bisa dibatalkan.'))return;google.script.run.withSuccessHandler(()=>loadData()).withFailureHandler(e=>alert(e.message)).clearLocations(token)}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 </script></body></html>
