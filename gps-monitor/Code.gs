@@ -4,7 +4,7 @@
  * The script creates/uses a separate GPS_USAGE tab and does not clear other tabs.
  */
 const FINALPATROLI_SPREADSHEET_ID = '1Jcj-52qqQNbU_vLhK9YY8KZWJKBE5H6cLhB6c5nEA48';
-const GPS_HEADERS = ['Timestamp','Device ID','Latitude','Longitude','Accuracy (m)','Page','Consent','User Agent'];
+const GPS_HEADERS = ['Timestamp','Device ID','Latitude','Longitude','Accuracy (m)','Page','Consent','User Agent','Device Details'];
 
 function setupMonitor() {
   const props = PropertiesService.getScriptProperties();
@@ -50,7 +50,8 @@ function doPost(e) {
       Math.max(0, Number(data.accuracy) || 0),
       String(data.page || 'FinalPatroli').slice(0, 120),
       'YES',
-      String(data.userAgent || '').slice(0, 500)
+      String(data.userAgent || '').slice(0, 500),
+      JSON.stringify(sanitizeDeviceDetails_(data.deviceDetails))
     ]);
     return ContentService.createTextOutput('ok');
   } catch (err) {
@@ -78,7 +79,8 @@ function getLocations(token) {
     longitude: Number(r[3]),
     accuracy: Number(r[4]) || 0,
     page: String(r[5] || ''),
-    userAgent: String(r[7] || '')
+    userAgent: String(r[7] || ''),
+    deviceDetails: String(r[8] || '')
   })).filter(x => Number.isFinite(x.latitude) && Number.isFinite(x.longitude));
 }
 
@@ -102,12 +104,24 @@ function ensureHeaders_(sheet) {
     return;
   }
   const existing = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0].map(String);
-  const required = GPS_HEADERS[7];
-  if (!existing.includes(required)) {
-    const nextCol = sheet.getLastColumn() + 1;
-    sheet.getRange(1, nextCol).setValue(required);
-  }
+  GPS_HEADERS.forEach(header => {
+    if (!existing.includes(header)) {
+      const nextCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, nextCol).setValue(header);
+      existing.push(header);
+    }
+  });
   sheet.setFrozenRows(1);
+}
+
+function sanitizeDeviceDetails_(details) {
+  if (!details || typeof details !== 'object') return {};
+  const allowed = ['platform','language','languages','timezone','screen','viewport','cores','memoryGB','touchPoints','cookieEnabled','online'];
+  const out = {};
+  allowed.forEach(k => {
+    if (details[k] !== undefined && details[k] !== null) out[k] = details[k];
+  });
+  return out;
 }
 
 function getSpreadsheet_() {
