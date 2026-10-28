@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FinalPatroli GPS Monitor</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{font-family:Arial,sans-serif;color:#172033;background:#f4f7fb}*{box-sizing:border-box}body{margin:0;padding:16px;max-width:1100px;margin-inline:auto}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 4px 18px #0f172a0a}
+h1{font-size:22px;margin:0 0 6px}.muted{color:#64748b;font-size:13px}input,button{font-size:16px;padding:12px;border-radius:10px;border:1px solid #cbd5e1}input{width:100%;margin:10px 0}button{background:#123f91;color:#fff;border:0;font-weight:700;cursor:pointer;margin:4px 4px 4px 0}.danger{background:#b91c1c}.hidden{display:none}#map{height:380px;border-radius:12px;z-index:1}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}a{color:#1d4ed8}.status{margin-top:8px;font-size:13px;color:#475569}
+</style></head><body>
+<section class="card"><h1>FinalPatroli — GPS Usage Monitor</h1><div class="muted">Khusus FinalPatroli. Titik hanya direkam setelah pengguna menyetujui permintaan lokasi.</div></section>
+<section id="login" class="card"><h2>Login Admin</h2><input id="password" type="password" autocomplete="current-password" placeholder="Password admin"><button onclick="login()">Masuk</button><div id="loginMsg" class="status"></div></section>
+<section id="dashboard" class="hidden">
+<div class="card"><b id="count">0 titik</b><div class="muted">Menampilkan maksimum 2.000 catatan terbaru. Satu perangkat bisa muncul lebih dari sekali.</div><p><button onclick="loadData()">Muat ulang</button><button class="danger" onclick="clearData()">Hapus seluruh riwayat GPS</button></p><div id="status" class="status"></div></div>
+<div class="card"><div id="map"></div></div>
+<div class="card tablewrap"><table><thead><tr><th>Waktu</th><th>Perangkat</th><th>Koordinat</th><th>Akurasi</th><th>Peta</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let token='', map=null, markers=null;
+function login(){document.getElementById('loginMsg').textContent='Memeriksa...';google.script.run.withSuccessHandler(r=>{if(!r||!r.ok){document.getElementById('loginMsg').textContent='Password salah.';return}token=r.token;document.getElementById('login').classList.add('hidden');document.getElementById('dashboard').classList.remove('hidden');initMap();loadData()}).withFailureHandler(e=>document.getElementById('loginMsg').textContent=e.message).adminLogin(document.getElementById('password').value)}
+function initMap(){if(map)return;map=L.map('map').setView([-2.5,118],5);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);markers=L.layerGroup().addTo(map)}
+function loadData(){document.getElementById('status').textContent='Memuat titik GPS...';google.script.run.withSuccessHandler(draw).withFailureHandler(e=>document.getElementById('status').textContent=e.message).getLocations(token)}
+function draw(items){markers.clearLayers();const rows=document.getElementById('rows');rows.innerHTML='';document.getElementById('count').textContent=items.length+' catatan GPS';if(!items.length){document.getElementById('status').textContent='Belum ada titik GPS yang masuk.';return}const bounds=[];items.forEach(x=>{const p=[x.latitude,x.longitude];bounds.push(p);L.marker(p).addTo(markers).bindPopup('<b>'+esc(x.deviceId||'Perangkat')+'</b><br>'+new Date(x.timestamp).toLocaleString('id-ID')+'<br>Akurasi ±'+Math.round(x.accuracy)+' m');const tr=document.createElement('tr');const cells=[new Date(x.timestamp).toLocaleString('id-ID'),x.deviceId||'-',x.latitude.toFixed(6)+', '+x.longitude.toFixed(6),Math.round(x.accuracy)+' m'];cells.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td)});const td=document.createElement('td');const a=document.createElement('a');a.href='https://www.google.com/maps?q='+encodeURIComponent(x.latitude+','+x.longitude);a.target='_blank';a.rel='noopener';a.textContent='Buka peta';td.appendChild(a);tr.appendChild(td);rows.appendChild(tr)});map.fitBounds(bounds,{padding:[25,25],maxZoom:15});document.getElementById('status').textContent='Berhasil memuat titik GPS.'}
+function clearData(){if(!confirm('Hapus seluruh riwayat GPS FinalPatroli? Tindakan ini tidak bisa dibatalkan.'))return;google.script.run.withSuccessHandler(()=>loadData()).withFailureHandler(e=>alert(e.message)).clearLocations(token)}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+</script></body></html>
