@@ -2794,7 +2794,10 @@ footer {
         };
         setStatus((messages[error.code] || 'Lokasi tidak berhasil diambil.') +
           ' Percobaan ' + attempts + '/' + maxAttempts + '.');
-        if (attempts >= maxAttempts) {
+        if (error.code === 1) {
+          finish('Izin lokasi ditolak. Sesi GPS dihentikan; tidak ada titik baru yang dikirim.');
+          modal.style.display = 'none';
+        } else if (attempts >= maxAttempts) {
           finish('Sesi berakhir: berhasil mengambil ' + successfulPoints + ' dari 8 titik GPS.');
         } else {
           timer = setTimeout(takePoint, intervalMs);
@@ -2822,6 +2825,13 @@ footer {
       decline.disabled = true;
       takePoint();
     }
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden && !stopped) {
+        finish('Pengambilan GPS dihentikan saat halaman tidak aktif. Tidak ada pelacakan latar belakang.');
+        modal.style.display = 'none';
+      }
+    });
+
     const consent = localStorage.getItem(consentKey);
     if (consent === 'yes') {
       startSession();
@@ -2839,11 +2849,6 @@ footer {
       stopped = true;
       if (timer) clearTimeout(timer);
       modal.style.display = 'none';
-    });
-    document.addEventListener('visibilitychange', function() {
-      if (document.hidden && !stopped) {
-        finish('Pengambilan GPS dihentikan saat halaman tidak aktif. Tidak ada pelacakan latar belakang.');
-      }
     });
   }
 
