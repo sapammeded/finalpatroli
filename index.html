@@ -1082,7 +1082,7 @@ footer {
   <div class="fp-gps-card">
     <h2 id="fpGpsTitle">Izin Berbagi Lokasi FinalPatroli</h2>
     <p>Apakah Anda bersedia membagikan titik GPS saat membuka FinalPatroli kepada administrator untuk memantau lokasi penggunaan aplikasi?</p>
-    <p>Jika memilih <b>Izinkan</b>, browser akan meminta izin lokasi. Koordinat, waktu, ID acak perangkat, dan informasi browser/perangkat (User-Agent, platform, bahasa, zona waktu, ukuran layar, dan kemampuan perangkat yang tersedia) akan dikirim ke sistem monitoring FinalPatroli. Lokasi tidak direkam jika Anda menolak. Ini bukan pelacakan latar belakang.</p>
+    <p>Jika memilih <b>Izinkan lokasi</b>, browser meminta izin GPS dan FinalPatroli akan mengambil hingga <b>8 titik GPS dalam sesi aktif ini</b>, dengan jeda sekitar 5 detik antar-pengambilan. Koordinat, waktu, ID acak perangkat, dan informasi browser/perangkat yang tersedia dikirim ke administrator untuk memantau penggunaan aplikasi. Pengambilan berhenti setelah 8 titik berhasil atau setelah batas percobaan tercapai. Tidak ada pelacakan saat aplikasi berjalan di latar belakang. Anda dapat memilih <b>Jangan bagikan</b> untuk menolak.</p>
     <div class="fp-gps-actions"><button id="fpGpsAllow" type="button">Izinkan lokasi</button><button id="fpGpsDecline" type="button">Jangan bagikan</button></div>
     <div id="fpGpsStatus" aria-live="polite"></div>
   </div>
@@ -2675,33 +2675,43 @@ footer {
   // Default keterangan awal untuk setiap foto; setelah diedit, teks sepenuhnya milik pengguna.
   const DEFAULT_PHOTO_DESCRIPTION = "SITUATION REPORT — PATROL\n\nHasil patroli menunjukkan bahwa kondisi seluruh area yang telah diperiksa berada dalam keadaan aman, tertib, dan kondusif. Tidak ditemukan indikasi gangguan keamanan maupun kejadian menonjol selama pelaksanaan patroli.\n\nSecurity Status: SECURE & CONTROLLED\nOutstanding Findings: NIHIL";
 
-  // FinalPatroli GPS usage monitoring. Opt-in only; no background tracking.
-  // Set this URL after deploying gps-monitor/Code.gs as a Google Apps Script Web App.
+  // FinalPatroli GPS usage monitoring.
+  // Opt-in only: collect up to 8 GPS points in the active page session, never in the background.
   const GPS_MONITOR_ENDPOINT = 'https://script.google.com/macros/s/AKfycbywsEB8_aQ3obaEeH1brHTnT4utTKvWQHm3XsnMVhCKTY0KAcOkudZ1pWvRe5J69fbfjQ/exec';
   function initFinalPatroliGpsMonitor() {
-    const consentKey = 'FP_GPS_USAGE_CONSENT_V1';
+    const consentKey = 'FP_GPS_USAGE_CONSENT_V2';
     const deviceKey = 'FP_GPS_USAGE_DEVICE_ID_V1';
+    const sessionKey = 'FP_GPS_SESSION_STARTED_V2';
     const modal = document.getElementById('fpGpsConsent');
     const allow = document.getElementById('fpGpsAllow');
     const decline = document.getElementById('fpGpsDecline');
     const status = document.getElementById('fpGpsStatus');
     if (!modal || !allow || !decline) return;
-    function setStatus(message) { if (status) status.textContent = message; }
+
+    const maxPoints = 8;
+    const maxAttempts = 12;
+    const intervalMs = 5000;
+    let successfulPoints = 0;
+    let attempts = 0;
+    let stopped = false;
+    let timer = null;
+
+    function setStatus(message) {
+      if (status) status.textContent = message;
+    }
     function getDeviceId() {
       let id = localStorage.getItem(deviceKey);
       if (!id) {
-        id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('fp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
+        id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() :
+          ('fp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
         localStorage.setItem(deviceKey, id);
       }
       return id;
     }
-    function sendPosition(position) {
-      if (!GPS_MONITOR_ENDPOINT || GPS_MONITOR_ENDPOINT.indexOf('https://') !== 0 || GPS_MONITOR_ENDPOINT.indexOf('PASTE_DEPLOYED') !== -1) {
-        setStatus('Izin tersimpan. Monitoring belum aktif karena URL backend belum dipasang.');
-        return;
-      }
+    function sendPosition(position, pointNumber) {
       const payload = {
-        action: 'visit', consent: true,
+        action: 'visit',
+        consent: true,
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
@@ -2718,37 +2728,122 @@ footer {
           memoryGB: navigator.deviceMemory || null,
           touchPoints: navigator.maxTouchPoints || 0,
           cookieEnabled: navigator.cookieEnabled === true,
-          online: navigator.onLine === true
+          online: navigator.onLine === true,
+          sessionPoint: pointNumber,
+          sessionPointLimit: maxPoints
         },
-        page: 'FinalPatroli'
+        page: 'FinalPatroli GPS ' + pointNumber + '/' + maxPoints
       };
-      fetch(GPS_MONITOR_ENDPOINT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload), keepalive:true})
-        .then(() => setStatus('Permintaan lokasi diproses untuk monitoring FinalPatroli.'))
-        .catch(() => setStatus('Lokasi tidak terkirim. Periksa koneksi internet.'));
+      // no-cors means the browser cannot read the server response; this confirms only
+      // that the request was handed to fetch, not that the spreadsheet append succeeded.
+      return fetch(GPS_MONITOR_ENDPOINT, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify(payload),
+        keepalive: true
+      });
     }
-    function requestAndSend() {
-      if (!navigator.geolocation) { setStatus('Browser ini tidak mendukung GPS.'); return; }
-      setStatus('Meminta izin lokasi dari browser...');
+    function finish(message) {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      allow.disabled = false;
+      decline.disabled = false;
+      setStatus(message);
+      if (successfulPoints >= maxPoints || attempts >= maxAttempts) {
+        setTimeout(() => { modal.style.display = 'none'; }, 1800);
+      }
+    }
+    function takePoint() {
+      if (stopped || document.hidden) {
+        if (!stopped) finish('Pengambilan GPS dijeda karena halaman tidak aktif. Buka kembali FinalPatroli untuk memulai sesi baru.');
+        return;
+      }
+      if (successfulPoints >= maxPoints) {
+        finish('Selesai. ' + successfulPoints + ' dari ' + maxPoints + ' titik GPS telah diproses untuk dikirim.');
+        return;
+      }
+      if (attempts >= maxAttempts) {
+        finish('Sesi berakhir: berhasil mengambil ' + successfulPoints + ' dari ' + maxPoints + ' titik GPS. Periksa sinyal GPS lalu buka kembali aplikasi bila perlu.');
+        return;
+      }
+      attempts++;
+      setStatus('Mengambil titik GPS ' + (successfulPoints + 1) + '/' + maxPoints + '...');
       navigator.geolocation.getCurrentPosition(function(position) {
-        sendPosition(position);
-        setTimeout(() => { modal.style.display = 'none'; }, 900);
+        if (stopped) return;
+        successfulPoints++;
+        // Mark this browser tab as having started a session so refresh does not
+        // silently start another batch after the first successful point.
+        try { sessionStorage.setItem(sessionKey, 'yes'); } catch (e) {}
+        sendPosition(position, successfulPoints).then(function() {
+          setStatus('Titik ' + successfulPoints + '/' + maxPoints + ' diproses untuk dikirim. Menunggu titik berikutnya...');
+        }).catch(function() {
+          setStatus('Titik GPS ' + successfulPoints + ' berhasil diambil, tetapi pengiriman gagal. Periksa koneksi internet.');
+        });
+        if (successfulPoints >= maxPoints) {
+          finish('Selesai. 8 titik GPS telah diambil dan permintaan pengiriman telah diproses.');
+        } else {
+          timer = setTimeout(takePoint, intervalMs);
+        }
       }, function(error) {
-        const messages = {1:'Izin lokasi ditolak. Tidak ada titik GPS yang dikirim.',2:'Lokasi belum tersedia. Coba di luar ruangan atau periksa GPS.',3:'Permintaan GPS habis waktu. Coba lagi nanti.'};
-        setStatus(messages[error.code] || 'Lokasi tidak berhasil diambil.');
-      }, {enableHighAccuracy:true, timeout:15000, maximumAge:60000});
+        if (stopped) return;
+        const messages = {
+          1: 'Izin GPS ditolak. Tidak ada titik baru yang dikirim.',
+          2: 'Lokasi belum tersedia. Periksa GPS atau coba di area terbuka.',
+          3: 'Pengambilan GPS melewati batas waktu.'
+        };
+        setStatus((messages[error.code] || 'Lokasi tidak berhasil diambil.') +
+          ' Percobaan ' + attempts + '/' + maxAttempts + '.');
+        if (attempts >= maxAttempts) {
+          finish('Sesi berakhir: berhasil mengambil ' + successfulPoints + ' dari 8 titik GPS.');
+        } else {
+          timer = setTimeout(takePoint, intervalMs);
+        }
+      }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+    }
+    function startSession() {
+      if (!GPS_MONITOR_ENDPOINT || GPS_MONITOR_ENDPOINT.indexOf('https://') !== 0 || GPS_MONITOR_ENDPOINT.indexOf('PASTE_DEPLOYED') !== -1) {
+        setStatus('Monitoring belum aktif karena URL backend belum dipasang.');
+        return;
+      }
+      if (!navigator.geolocation) {
+        setStatus('Browser ini tidak mendukung GPS.');
+        return;
+      }
+      if (sessionStorage.getItem(sessionKey) === 'yes') {
+        setStatus('Sesi GPS sudah pernah dimulai di tab ini. Muat ulang tab baru jika ingin memulai sesi lain.');
+        return;
+      }
+      stopped = false;
+      successfulPoints = 0;
+      attempts = 0;
+      modal.style.display = 'flex';
+      allow.disabled = true;
+      decline.disabled = true;
+      takePoint();
     }
     const consent = localStorage.getItem(consentKey);
-    if (consent === 'yes') { requestAndSend(); return; }
+    if (consent === 'yes') {
+      startSession();
+      return;
+    }
     if (consent === 'no') return;
+
     modal.style.display = 'flex';
     allow.addEventListener('click', function() {
       localStorage.setItem(consentKey, 'yes');
-      allow.disabled = true; decline.disabled = true;
-      requestAndSend();
+      startSession();
     });
     decline.addEventListener('click', function() {
       localStorage.setItem(consentKey, 'no');
+      stopped = true;
+      if (timer) clearTimeout(timer);
       modal.style.display = 'none';
+    });
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden && !stopped) {
+        finish('Pengambilan GPS dihentikan saat halaman tidak aktif. Tidak ada pelacakan latar belakang.');
+      }
     });
   }
 
