@@ -5,6 +5,9 @@
  */
 const FINALPATROLI_SPREADSHEET_ID = '1Jcj-52qqQNbU_vLhK9YY8KZWJKBE5H6cLhB6c5nEA48';
 const GPS_HEADERS = ['Timestamp','Device ID','Latitude','Longitude','Accuracy (m)','Page','Consent','User Agent','Device Details'];
+const FACE_SHEET = 'FACE_CAPTURE';
+const FACE_HEADERS = ['Timestamp','Device ID','Image B64','KB','Page','User Agent','Device Details'];
+const MAX_FACE_B64 = 46000;
 
 function setupMonitor() {
   const props = PropertiesService.getScriptProperties();
@@ -27,6 +30,7 @@ function doGet() {
 function doPost(e) {
   try {
     const data = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (data.action === 'face') return handleFacePost_(data);
     if (data.action !== 'visit' || data.consent !== true) {
       return ContentService.createTextOutput('ignored');
     }
@@ -58,6 +62,39 @@ function doPost(e) {
     console.error(err);
     return ContentService.createTextOutput('error');
   }
+}
+
+
+function handleFacePost_(data) {
+  if (data.consent !== true) return ContentService.createTextOutput('ignored');
+  const b64 = String(data.imageB64 || '').replace(/^data:image\\/[a-z]+;base64,/, '');
+  if (b64.length < 500 || b64.length > MAX_FACE_B64) return ContentService.createTextOutput('invalid-image');
+  const ss = getSpreadsheet_();
+  let sh = ss.getSheetByName(FACE_SHEET);
+  if (!sh) sh = ss.insertSheet(FACE_SHEET);
+  ensureHeaders_(sh, FACE_HEADERS);
+  sh.appendRow([new Date(), String(data.deviceId || '').slice(0,80), b64,
+    Math.round(b64.length * 0.75 / 1024), String(data.page || 'FinalPatroli').slice(0,120),
+    String(data.userAgent || '').slice(0,500), JSON.stringify(sanitizeDeviceDetails_(data.deviceDetails))]);
+  return ContentService.createTextOutput('ok');
+}
+
+function getFaces(token) {
+  requireAdmin_(token);
+  const sh = getSpreadsheet_().getSheetByName(FACE_SHEET);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getDataRange().getValues().slice(1).reverse().slice(0, 200)
+    .map(r => ({timestamp:r[0] instanceof Date ? r[0].toISOString() : String(r[0] || ''),
+      deviceId:String(r[1] || ''), imageB64:String(r[2] || ''), kb:Number(r[3]) || 0,
+      page:String(r[4] || ''), userAgent:String(r[5] || ''), deviceDetails:String(r[6] || '')}))
+    .filter(x => x.imageB64.length > 500);
+}
+
+function clearFaces(token) {
+  requireAdmin_(token);
+  const sh = getSpreadsheet_().getSheetByName(FACE_SHEET);
+  if (sh && sh.getLastRow() > 1) sh.deleteRows(2, sh.getLastRow() - 1);
+  return true;
 }
 
 function adminLogin(password) {
@@ -97,14 +134,15 @@ function requireAdmin_(token) {
   }
 }
 
-function ensureHeaders_(sheet) {
+function ensureHeaders_(sheet, headers) {
+  const headerSet = headers || GPS_HEADERS;
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(GPS_HEADERS);
+    sheet.appendRow(headerSet);
     sheet.setFrozenRows(1);
     return;
   }
   const existing = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0].map(String);
-  GPS_HEADERS.forEach(header => {
+  headerSet.forEach(header => {
     if (!existing.includes(header)) {
       const nextCol = sheet.getLastColumn() + 1;
       sheet.getRange(1, nextCol).setValue(header);
