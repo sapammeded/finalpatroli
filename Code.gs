@@ -83,7 +83,7 @@ function getFaces(token) {
   requireAdmin_(token);
   const sh = getSpreadsheet_().getSheetByName(FACE_SHEET);
   if (!sh || sh.getLastRow() < 2) return [];
-  return sh.getDataRange().getValues().slice(1).reverse().slice(0, 200)
+  return sh.getDataRange().getValues().slice(1).reverse().slice(0, 30)
     .map(r => ({timestamp:r[0] instanceof Date ? r[0].toISOString() : String(r[0] || ''),
       deviceId:String(r[1] || ''), imageB64:String(r[2] || ''), kb:Number(r[3]) || 0,
       page:String(r[4] || ''), userAgent:String(r[5] || ''), deviceDetails:String(r[6] || '')}))
