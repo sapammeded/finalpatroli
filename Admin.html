@@ -22,13 +22,37 @@ h1{font-size:22px;margin:0 0 6px}.muted{color:#64748b;font-size:13px}input,butto
   </div>
   <div id="filterStatus" class="muted"></div>
 </div>
+
+<div class="card">
+ <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+  <b id="faceCount">0 foto</b><div><button onclick="loadFaces()">Muat ulang foto</button><button class="danger" onclick="clearFaces()">Hapus semua foto</button></div>
+ </div>
+ <div class="muted" style="margin-top:6px">Hanya foto yang dikirim setelah pengguna menyetujui pengambilan foto. Batasi akses dashboard admin.</div>
+ <div id="faceGrid" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px"></div>
+ <div id="faceStatus" class="status"></div>
+</div>
+
 <div class="card"><div id="map"></div></div>
 <div class="card tablewrap"><table><thead><tr><th>Waktu</th><th>Perangkat</th><th>Koordinat</th><th>Akurasi</th><th>User Agent</th><th>Detail Perangkat</th><th>Peta</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 let token='', map=null, markers=null, allItems=[], filteredItems=[];
-function login(){document.getElementById('loginMsg').textContent='Memeriksa...';google.script.run.withSuccessHandler(r=>{if(!r||!r.ok){document.getElementById('loginMsg').textContent='Password salah.';return}token=r.token;document.getElementById('login').classList.add('hidden');document.getElementById('dashboard').classList.remove('hidden');initMap();loadData()}).withFailureHandler(e=>document.getElementById('loginMsg').textContent=e.message).adminLogin(document.getElementById('password').value)}
+function login(){document.getElementById('loginMsg').textContent='Memeriksa...';google.script.run.withSuccessHandler(r=>{if(!r||!r.ok){document.getElementById('loginMsg').textContent='Password salah.';return}token=r.token;document.getElementById('login').classList.add('hidden');document.getElementById('dashboard').classList.remove('hidden');initMap();loadData();loadFaces()}).withFailureHandler(e=>document.getElementById('loginMsg').textContent=e.message).adminLogin(document.getElementById('password').value)}
+
+function loadFaces(){document.getElementById('faceStatus').textContent='Memuat foto…';google.script.run.withSuccessHandler(items=>renderFaces(items||[])).withFailureHandler(e=>document.getElementById('faceStatus').textContent=e.message).getFaces(token)}
+function renderFaces(items){
+ const grid=document.getElementById('faceGrid');grid.innerHTML='';document.getElementById('faceCount').textContent=items.length+' foto';
+ if(!items.length){grid.textContent='Belum ada foto yang disetujui dan tersimpan.';document.getElementById('faceStatus').textContent='';return}
+ items.forEach(f=>{const card=document.createElement('div');card.style.cssText='width:120px;text-align:center;font-size:11px;color:#64748b;overflow-wrap:anywhere';
+ const img=document.createElement('img');img.alt='Foto yang dikirim dengan persetujuan';img.src='data:image/jpeg;base64,'+f.imageB64;img.style.cssText='width:112px;height:112px;object-fit:cover;border-radius:10px;border:1px solid #e2e8f0;background:#f1f5f9';img.loading='lazy';card.appendChild(img);
+ const t=document.createElement('div');t.textContent=new Date(f.timestamp).toLocaleString('id-ID');card.appendChild(t);
+ const d=document.createElement('div');d.textContent='ID '+(f.deviceId||'-').slice(0,8);card.appendChild(d);
+ const k=document.createElement('div');k.textContent=(f.kb||0)+' KB';card.appendChild(k);grid.appendChild(card)});
+ document.getElementById('faceStatus').textContent='Menampilkan maksimal 200 foto terbaru.';
+}
+function clearFaces(){if(!confirm('Hapus semua foto wajah yang tersimpan? Tindakan ini tidak bisa dibatalkan.'))return;google.script.run.withSuccessHandler(()=>loadFaces()).withFailureHandler(e=>alert(e.message)).clearFaces(token)}
+
 function initMap(){if(map)return;map=L.map('map').setView([-2.5,118],5);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);markers=L.layerGroup().addTo(map)}
 function loadData(){document.getElementById('status').textContent='Memuat titik GPS...';google.script.run.withSuccessHandler(items=>{allItems=items||[];applyFilter()}).withFailureHandler(e=>document.getElementById('status').textContent=e.message).getLocations(token)}
 function deviceLabel(x){try{const d=typeof x.deviceDetails==='string'?JSON.parse(x.deviceDetails):x.deviceDetails;return [d&&d.brand,d&&d.model].filter(Boolean).join(' ')}catch(e){return ''}}
