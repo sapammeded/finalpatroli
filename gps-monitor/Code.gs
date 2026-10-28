@@ -1,28 +1,24 @@
-/** FinalPatroli — GPS Usage Monitor (standalone Apps Script backend)
- * Deploy as Web App. Set Script Properties:
- *   ADMIN_PASSWORD = a strong password
- *   SPREADSHEET_ID = optional existing NEW/DEDICATED spreadsheet ID; if omitted, script creates one.
- * Never point this to another project's spreadsheet.
+/** FinalPatroli — GPS Usage Monitor
+ * Uses ONLY the Google Spreadsheet ID specified below.
+ * Deploy as Web App. Set Script Property ADMIN_PASSWORD to a strong password.
+ * The script creates/uses a separate GPS_USAGE tab and does not clear other tabs.
  */
+const FINALPATROLI_SPREADSHEET_ID = '1Jcj-52qqQNbU_vLhK9YY8KZWJKBE5H6cLhB6c5nEA48';
+const GPS_HEADERS = ['Timestamp','Device ID','Latitude','Longitude','Accuracy (m)','Page','Consent'];
+
 function setupMonitor() {
   const props = PropertiesService.getScriptProperties();
   if (!props.getProperty('ADMIN_PASSWORD')) {
-    throw new Error('Set Script Property ADMIN_PASSWORD first.');
+    throw new Error('Atur Script Property ADMIN_PASSWORD terlebih dahulu.');
   }
-  let id = props.getProperty('SPREADSHEET_ID');
-  if (!id) {
-    const ss = SpreadsheetApp.create('FinalPatroli GPS Usage');
-    id = ss.getId();
-    props.setProperty('SPREADSHEET_ID', id);
-  }
-  const ss = SpreadsheetApp.openById(id);
+  const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName('GPS_USAGE');
   if (!sheet) sheet = ss.insertSheet('GPS_USAGE');
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(['Timestamp','Device ID','Latitude','Longitude','Accuracy (m)','Page','Consent']);
+    sheet.appendRow(GPS_HEADERS);
     sheet.setFrozenRows(1);
   }
-  return {spreadsheetId:id, spreadsheetUrl:ss.getUrl()};
+  return {spreadsheetId:FINALPATROLI_SPREADSHEET_ID, spreadsheetUrl:ss.getUrl(), sheetName:'GPS_USAGE'};
 }
 
 function doGet() {
@@ -45,19 +41,21 @@ function doPost(e) {
     let sh = ss.getSheetByName('GPS_USAGE');
     if (!sh) {
       sh = ss.insertSheet('GPS_USAGE');
-      sh.appendRow(['Timestamp','Device ID','Latitude','Longitude','Accuracy (m)','Page','Consent']);
+      sh.appendRow(GPS_HEADERS);
       sh.setFrozenRows(1);
     }
     sh.appendRow([
       new Date(),
       String(data.deviceId || '').slice(0, 80),
-      lat, lon,
+      lat,
+      lon,
       Math.max(0, Number(data.accuracy) || 0),
       String(data.page || 'FinalPatroli').slice(0, 120),
       'YES'
     ]);
     return ContentService.createTextOutput('ok');
   } catch (err) {
+    console.error(err);
     return ContentService.createTextOutput('error');
   }
 }
@@ -71,13 +69,10 @@ function adminLogin(password) {
 }
 
 function getLocations(token) {
-  if (!token || CacheService.getScriptCache().get('admin:' + token) !== '1') {
-    throw new Error('Sesi admin tidak valid. Silakan login kembali.');
-  }
+  requireAdmin_(token);
   const sh = getSpreadsheet_().getSheetByName('GPS_USAGE');
   if (!sh || sh.getLastRow() < 2) return [];
-  const values = sh.getDataRange().getValues();
-  return values.slice(1).reverse().slice(0, 2000).map(r => ({
+  return sh.getDataRange().getValues().slice(1).reverse().slice(0, 2000).map(r => ({
     timestamp: r[0] instanceof Date ? r[0].toISOString() : String(r[0] || ''),
     deviceId: String(r[1] || ''),
     latitude: Number(r[2]),
@@ -88,16 +83,18 @@ function getLocations(token) {
 }
 
 function clearLocations(token) {
-  if (!token || CacheService.getScriptCache().get('admin:' + token) !== '1') {
-    throw new Error('Sesi admin tidak valid. Silakan login kembali.');
-  }
+  requireAdmin_(token);
   const sh = getSpreadsheet_().getSheetByName('GPS_USAGE');
   if (sh && sh.getLastRow() > 1) sh.deleteRows(2, sh.getLastRow() - 1);
   return true;
 }
 
+function requireAdmin_(token) {
+  if (!token || CacheService.getScriptCache().get('admin:' + token) !== '1') {
+    throw new Error('Sesi admin tidak valid. Silakan login kembali.');
+  }
+}
+
 function getSpreadsheet_() {
-  const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
-  if (!id) throw new Error('Jalankan setupMonitor() setelah mengatur ADMIN_PASSWORD.');
-  return SpreadsheetApp.openById(id);
+  return SpreadsheetApp.openById(FINALPATROLI_SPREADSHEET_ID);
 }
