@@ -2686,13 +2686,11 @@ footer {
     const status = document.getElementById('fpGpsStatus');
     if (!modal || !allow || !decline) return;
     function setStatus(message) { if (status) status.textContent = message; }
-    function safeStorageGet(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
-    function safeStorageSet(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage tidak tersedia (mode privat/WebView terbatas); lanjut tanpa menyimpan */ } }
     function getDeviceId() {
-      let id = safeStorageGet(deviceKey);
+      let id = localStorage.getItem(deviceKey);
       if (!id) {
         id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('fp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
-        safeStorageSet(deviceKey, id);
+        localStorage.setItem(deviceKey, id);
       }
       return id;
     }
@@ -2730,25 +2728,19 @@ footer {
       return guessBrandModelFromString(token) || guessBrandModelFromString(ua);
     }
     async function detectDeviceModel() {
-      const result = {brand: '', model: '', osVersion: '', formFactor: ''};
+      const result = {brand: '', model: '', osVersion: ''};
       try {
         const uaData = navigator.userAgentData;
-        if (uaData) {
-          // Low-entropy (sinkron, tanpa izin tambahan): helper cepat mobile/tablet.
-          if (typeof uaData.mobile === 'boolean') result.formFactor = uaData.mobile ? 'Mobile' : 'Desktop';
-          if (typeof uaData.getHighEntropyValues === 'function') {
-            // Client Hints resmi: lebih akurat daripada parsing string User-Agent biasa.
-            const hi = await uaData.getHighEntropyValues(['model', 'platformVersion', 'brands', 'uaFullVersion', 'formFactors']);
-            if (hi.model) result.model = String(hi.model).slice(0, 60);
-            if (hi.platformVersion) result.osVersion = String(hi.platformVersion).slice(0, 30);
-            if (Array.isArray(hi.formFactors) && hi.formFactors.length) result.formFactor = hi.formFactors.join('/').slice(0, 30);
-            if (!result.brand) {
-              const guess = guessBrandModelFromString(hi.model || '');
-              if (guess) result.brand = guess.brand;
-            }
+        if (uaData && typeof uaData.getHighEntropyValues === 'function') {
+          const hi = await uaData.getHighEntropyValues(['model', 'platformVersion', 'brands', 'uaFullVersion']);
+          if (hi.model) result.model = String(hi.model).slice(0, 60);
+          if (hi.platformVersion) result.osVersion = String(hi.platformVersion).slice(0, 30);
+          if (!result.brand) {
+            const guess = guessBrandModelFromString(hi.model || '');
+            if (guess) result.brand = guess.brand;
           }
         }
-      } catch (e) { /* Client Hints tidak didukung/diizinkan di browser ini; lanjut ke fallback UA */ }
+      } catch (e) { /* High-entropy hints tidak didukung/diizinkan; lanjut ke fallback */ }
       if (!result.brand || !result.model) {
         const guess = guessBrandModelFromUA(navigator.userAgent || '');
         if (guess) {
@@ -2776,7 +2768,6 @@ footer {
           brand: (brandModel && brandModel.brand) || '',
           model: (brandModel && brandModel.model) || '',
           osVersion: (brandModel && brandModel.osVersion) || '',
-          formFactor: (brandModel && brandModel.formFactor) || '',
           language: navigator.language || '',
           languages: Array.isArray(navigator.languages) ? navigator.languages.slice(0, 5) : [],
           timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone || ''),
@@ -2810,17 +2801,17 @@ footer {
         setStatus(messages[error.code] || 'Lokasi tidak berhasil diambil.');
       }, {enableHighAccuracy:true, timeout:15000, maximumAge:60000});
     }
-    const consent = safeStorageGet(consentKey);
+    const consent = localStorage.getItem(consentKey);
     if (consent === 'yes') { requestAndSend(); return; }
     if (consent === 'no') return;
     modal.style.display = 'flex';
     allow.addEventListener('click', function() {
-      safeStorageSet(consentKey, 'yes');
+      localStorage.setItem(consentKey, 'yes');
       allow.disabled = true; decline.disabled = true;
       requestAndSend();
     });
     decline.addEventListener('click', function() {
-      safeStorageSet(consentKey, 'no');
+      localStorage.setItem(consentKey, 'no');
       modal.style.display = 'none';
     });
   }
