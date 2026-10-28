@@ -4,7 +4,7 @@
  * The script creates/uses a separate GPS_USAGE tab and does not clear other tabs.
  */
 const FINALPATROLI_SPREADSHEET_ID = '1Jcj-52qqQNbU_vLhK9YY8KZWJKBE5H6cLhB6c5nEA48';
-const GPS_HEADERS = ['Timestamp','Device ID','Latitude','Longitude','Accuracy (m)','Page','Consent'];
+const GPS_HEADERS = ['Timestamp','Device ID','Latitude','Longitude','Accuracy (m)','Page','Consent','User Agent'];
 
 function setupMonitor() {
   const props = PropertiesService.getScriptProperties();
@@ -14,10 +14,7 @@ function setupMonitor() {
   const ss = getSpreadsheet_();
   let sheet = ss.getSheetByName('GPS_USAGE');
   if (!sheet) sheet = ss.insertSheet('GPS_USAGE');
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(GPS_HEADERS);
-    sheet.setFrozenRows(1);
-  }
+  ensureHeaders_(sheet);
   return {spreadsheetId:FINALPATROLI_SPREADSHEET_ID, spreadsheetUrl:ss.getUrl(), sheetName:'GPS_USAGE'};
 }
 
@@ -41,8 +38,9 @@ function doPost(e) {
     let sh = ss.getSheetByName('GPS_USAGE');
     if (!sh) {
       sh = ss.insertSheet('GPS_USAGE');
-      sh.appendRow(GPS_HEADERS);
-      sh.setFrozenRows(1);
+      ensureHeaders_(sh);
+    } else {
+      ensureHeaders_(sh);
     }
     sh.appendRow([
       new Date(),
@@ -51,7 +49,8 @@ function doPost(e) {
       lon,
       Math.max(0, Number(data.accuracy) || 0),
       String(data.page || 'FinalPatroli').slice(0, 120),
-      'YES'
+      'YES',
+      String(data.userAgent || '').slice(0, 500)
     ]);
     return ContentService.createTextOutput('ok');
   } catch (err) {
@@ -78,7 +77,8 @@ function getLocations(token) {
     latitude: Number(r[2]),
     longitude: Number(r[3]),
     accuracy: Number(r[4]) || 0,
-    page: String(r[5] || '')
+    page: String(r[5] || ''),
+    userAgent: String(r[7] || '')
   })).filter(x => Number.isFinite(x.latitude) && Number.isFinite(x.longitude));
 }
 
@@ -93,6 +93,21 @@ function requireAdmin_(token) {
   if (!token || CacheService.getScriptCache().get('admin:' + token) !== '1') {
     throw new Error('Sesi admin tidak valid. Silakan login kembali.');
   }
+}
+
+function ensureHeaders_(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(GPS_HEADERS);
+    sheet.setFrozenRows(1);
+    return;
+  }
+  const existing = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0].map(String);
+  const required = GPS_HEADERS[7];
+  if (!existing.includes(required)) {
+    const nextCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, nextCol).setValue(required);
+  }
+  sheet.setFrozenRows(1);
 }
 
 function getSpreadsheet_() {
