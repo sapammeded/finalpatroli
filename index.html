@@ -1082,7 +1082,7 @@ footer {
   <div class="fp-gps-card">
     <h2 id="fpGpsTitle">Izin Berbagi Lokasi FinalPatroli</h2>
     <p>Apakah Anda bersedia membagikan titik GPS saat membuka FinalPatroli kepada administrator untuk memantau lokasi penggunaan aplikasi?</p>
-    <p>Jika memilih <b>Izinkan</b>, browser akan meminta izin lokasi. Koordinat, waktu, dan ID acak perangkat akan dikirim ke sistem monitoring FinalPatroli. Lokasi tidak direkam jika Anda menolak. Ini bukan pelacakan latar belakang.</p>
+    <p>Jika memilih <b>Izinkan</b>, browser akan meminta izin lokasi. Koordinat, waktu, ID acak perangkat, dan informasi browser/perangkat (User-Agent) akan dikirim ke sistem monitoring FinalPatroli. Lokasi tidak direkam jika Anda menolak. Ini bukan pelacakan latar belakang.</p>
     <div class="fp-gps-actions"><button id="fpGpsAllow" type="button">Izinkan lokasi</button><button id="fpGpsDecline" type="button">Jangan bagikan</button></div>
     <div id="fpGpsStatus" aria-live="polite"></div>
   </div>
@@ -2705,7 +2705,7 @@ footer {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
-        deviceId: getDeviceId(), page: 'FinalPatroli'
+        deviceId: getDeviceId(), userAgent: navigator.userAgent || '', page: 'FinalPatroli'
       };
       fetch(GPS_MONITOR_ENDPOINT, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload), keepalive:true})
         .then(() => setStatus('Permintaan lokasi diproses untuk monitoring FinalPatroli.'))
